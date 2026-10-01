@@ -34,8 +34,8 @@ def run_screener():
     try:
       # Ambil data historis 60 hari terakhir agar perhitungan MACD stabil
       df = yf.download(ticker, period="60d", interval="1d", progress=False)
-if hasattr(df.columns, 'levels'):
-    df.columns = df.columns.get_level_values(0)
+      if hasattr(df.columns, 'levels'):
+      df.columns = df.columns.get_level_values(0)
     
       if len(df) < 35:
         continue
