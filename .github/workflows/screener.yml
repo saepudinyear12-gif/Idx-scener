@@ -28,5 +28,5 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          python scener.yml  # Sesuaikan jika nama file python Anda scener.py
+          python scener.py  # Sesuaikan jika nama file python Anda scener.py
           
