@@ -1,14 +1,14 @@
-name: Otomatisasi Penyaring Saham
+name: Stock Screener Bot
 
 on:
-  workflow_dispatch:  # Tetap ada agar Anda tetap bisa tes manual kapan saja
   schedule:
-    - cron: '0 9 * * 1-5'  # Berjalan otomatis Senin - Jumat pukul 09:00 UTC (16:00 WIB)
+    # Berjalan otomatis Senin - Jumat pukul 16:05 WIB (09:05 UTC)
+    - cron: '5 9 * * 1-5'
+  workflow_dispatch: # Tombol untuk menjalankan manual kapan saja di web GitHub
 
 jobs:
   run-screener:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -21,12 +21,11 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pandas yfinance requests
+          pip install pandas yfinance python-telegram-bot
 
       - name: Run screener script
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          python scener.py  # Sesuaikan jika nama file python Anda scener.py
-          
+        run: python main.py
+        
