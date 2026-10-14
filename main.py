@@ -50,22 +50,51 @@ def check_stock_signal(ticker_symbol):
         value = close_price * volume
         price_change_pct = ((close_price - float(prev['Close'])) / float(prev['Close'])) * 100
 
-        # Kriteria Screener "HAKA / Breakout Momentum"
-        cond_macd_hist = float(latest['MACD_Hist']) > 0
-        cond_vol = volume > (vol_ma20 * 2.0)                                    # Volume meledak minimal 2x lipat
-        cond_ema = close_price > ema20                                          # Harga di atas tren
-        cond_val = value >= 5_000_000_000                                       # Likuiditas minimal 5 Miliar
-        cond_change = price_change_pct >= 3.0                                   # Harga sedang melesat kuat min. +3%
-        cond_rsi = float(latest['RSI14']) > 50 and float(latest['RSI14']) > float(prev['RSI14']) # RSI kuat & menanjak
+        # Filter Minimum Likuiditas Transaksi 5 Miliar
+        if value < 5_000_000_000 or close_price < (ema20 * 0.98):
+            return None
 
-        if cond_macd_hist and cond_vol and cond_ema and cond_val and cond_change and cond_rsi:
+        signal_type = None
+
+        # 1. Kriteria SINYAL HAKA (Breakout Momentum Ekstrem)
+        cond_haka_vol = volume > (vol_ma20 * 2.0)
+        cond_haka_change = price_change_pct >= 3.0
+        cond_haka_rsi = float(latest['RSI14']) > 50 and float(latest['RSI14']) > float(prev['RSI14'])
+        cond_haka_macd = float(latest['MACD_Hist']) > 0
+
+        if cond_haka_vol and cond_haka_change and cond_haka_rsi and cond_haka_macd:
+            signal_type = "HAKA"
+
+        # 2. Kriteria SINYAL SWING PENDEK (Rebound dari Support)
+        else:
+            cond_swing_vol = volume > vol_ma20
+            cond_swing_change = 0.5 <= price_change_pct < 3.0
+            cond_swing_rsi = 40 <= float(latest['RSI14']) <= 60 and float(latest['RSI14']) > float(prev['RSI14'])
+            cond_swing_macd = float(latest['MACD_Hist']) > float(prev['MACD_Hist'])
+
+            if cond_swing_vol and cond_swing_change and cond_swing_rsi and cond_swing_macd:
+                signal_type = "SWING"
+
+        if signal_type:
+            # Hitung Kalkulasi Trading Plan Khusus Swing
+            buy_low = close_price * 0.99
+            tp1 = close_price * 1.03
+            tp2 = close_price * 1.06
+            sl = close_price * 0.97
+
             return {
                 "ticker": ticker_symbol.replace(".JK", ""),
                 "price": close_price,
                 "change": price_change_pct,
                 "rsi": float(latest['RSI14']),
-                "volume_surge": volume / vol_ma20
+                "volume_surge": volume / vol_ma20,
+                "type": signal_type,
+                "buy_area": f"{buy_low:,.0f} - {close_price:,.0f}",
+                "tp1": tp1,
+                "tp2": tp2,
+                "sl": sl
             }
+
     except Exception as e:
         print(f"Error scanning {ticker_symbol}: {e}")
     return None
@@ -74,26 +103,41 @@ async def run_screener():
     bot = Bot(token=TELEGRAM_BOT_TOKEN)
     signals = []
 
-    print("Memulai proses pemindaian momentum HAKA...")
+    print("Memulai proses pemindaian HAKA & Swing Pendek...")
     for ticker in WATCHLIST:
         res = check_stock_signal(ticker)
         if res:
             signals.append(res)
 
     if signals:
-        message = "🔥 *SINYAL BREAKOUT / READY TO HAKA* 🔥\n\n"
+        message = "📊 *RADAR SAHAM IDX DETECTED* 📊\n\n"
         for s in signals:
-            message += (
-                f"📌 *{s['ticker']}*\n"
-                f"• Harga: Rp {s['price']:,.0f} ({s['change']:+.2f}%)\n"
-                f"• Lonjakan Volume: {s['volume_surge']:.1f}x dari rata-rata\n"
-                f"• RSI 14: {s['rsi']:.1f} (Strong Momentum)\n"
-                f"• Status: Gas HAKA / Buy on Breakout! 🚀\n\n"
-            )
+            if s['type'] == "HAKA":
+                message += (
+                    f"🔥 *{s['ticker']} (SIAP HAKA / BREAKOUT)* 🔥\n"
+                    f"• Harga: Rp {s['price']:,.0f} ({s['change']:+.2f}%)\n"
+                    f"• Vol Surge: {s['volume_surge']:.1f}x (Meledak!)\n"
+                    f"• RSI 14: {s['rsi']:.1f}\n"
+                    f"• Aksi: HAKA / Scalping / Day Trade 🚀\n\n"
+                )
+            elif s['type'] == "SWING":
+                message += (
+                    f"💎 *{s['ticker']} (SWING PENDEK / REBOUND)* 💎\n"
+                    f"• Harga Sekarang: Rp {s['price']:,.0f} ({s['change']:+.2f}%)\n"
+                    f"• Vol Surge: {s['volume_surge']:.1f}x | RSI: {s['rsi']:.1f}\n"
+                    f"-----------------------------------\n"
+                    f"📌 *TRADING PLAN SWING:* \n"
+                    f"• 🛒 Area Buy: Rp {s['buy_area']}\n"
+                    f"• 🎯 Target TP 1 (+3%): Rp {s['tp1']:,.0f}\n"
+                    f"• 🚀 Target TP 2 (+6%): Rp {s['tp2']:,.0f}\n"
+                    f"• 🛑 Stop Loss (-3%): Rp {s['sl']:,.0f}\n"
+                    f"• ⏱️ Estimasi Hold: 2 - 5 Hari Kerja\n\n"
+                )
+
         await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message, parse_mode="Markdown")
-        print("Pesan alert HAKA berhasil dikirim ke Telegram!")
+        print("Pesan alert berhasil dikirim ke Telegram!")
     else:
-        print("Belum ada emiten yang memenuhi kriteria breakout hari ini.")
+        print("Belum ada emiten yang memenuhi kriteria HAKA maupun Swing hari ini.")
 
 if __name__ == "__main__":
     asyncio.run(run_screener())
