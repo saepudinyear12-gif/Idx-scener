@@ -5,7 +5,7 @@ import yfinance as yf
 from telegram import Bot
 
 # Token & Chat ID Telegram Anda
-TELEGRAM_BOT_TOKEN = "8694938627:AAHls6ixUUTFSOaotL4ATnKoYVt04yIW0"
+TELEGRAM_BOT_TOKEN = "8694938627:AAHFF-uRBgSZIWFHK941fMMKglZIeZtAeVw"
 TELEGRAM_CHAT_ID = "1768576462"
 
 # Daftar emiten IDX yang ingin dipindai
