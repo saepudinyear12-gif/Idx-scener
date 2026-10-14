@@ -50,13 +50,13 @@ def check_stock_signal(ticker_symbol):
         value = close_price * volume
         price_change_pct = ((close_price - float(prev['Close'])) / float(prev['Close'])) * 100
 
-        # Kriteria Screener
+        # Kriteria Screener "HAKA / Breakout Momentum"
         cond_macd_hist = float(latest['MACD_Hist']) > 0
-        cond_vol = volume > vol_ma20
-        cond_ema = close_price > ema20
-        cond_val = value >= 5_000_000_000
-        cond_change = price_change_pct > 1.0
-        cond_rsi = float(latest['RSI14']) > float(prev['RSI14'])
+        cond_vol = volume > (vol_ma20 * 2.0)                                    # Volume meledak minimal 2x lipat
+        cond_ema = close_price > ema20                                          # Harga di atas tren
+        cond_val = value >= 5_000_000_000                                       # Likuiditas minimal 5 Miliar
+        cond_change = price_change_pct >= 3.0                                   # Harga sedang melesat kuat min. +3%
+        cond_rsi = float(latest['RSI14']) > 50 and float(latest['RSI14']) > float(prev['RSI14']) # RSI kuat & menanjak
 
         if cond_macd_hist and cond_vol and cond_ema and cond_val and cond_change and cond_rsi:
             return {
@@ -64,7 +64,7 @@ def check_stock_signal(ticker_symbol):
                 "price": close_price,
                 "change": price_change_pct,
                 "rsi": float(latest['RSI14']),
-                "rsi_prev": float(prev['RSI14'])
+                "volume_surge": volume / vol_ma20
             }
     except Exception as e:
         print(f"Error scanning {ticker_symbol}: {e}")
@@ -74,25 +74,26 @@ async def run_screener():
     bot = Bot(token=TELEGRAM_BOT_TOKEN)
     signals = []
 
-    print("Memulai proses pemindaian saham...")
+    print("Memulai proses pemindaian momentum HAKA...")
     for ticker in WATCHLIST:
         res = check_stock_signal(ticker)
         if res:
             signals.append(res)
 
     if signals:
-        message = "🚀 *POTENSI MOMENTUM / ARA DETECTED* 🚀\n\n"
+        message = "🔥 *SINYAL BREAKOUT / READY TO HAKA* 🔥\n\n"
         for s in signals:
             message += (
                 f"📌 *{s['ticker']}*\n"
                 f"• Harga: Rp {s['price']:,.0f} ({s['change']:+.2f}%)\n"
-                f"• RSI 14: {s['rsi']:.1f} (Kemarin: {s['rsi_prev']:.1f})\n"
-                f"• Sinyal: Accumulation & Momentum Turning Up ✅\n\n"
+                f"• Lonjakan Volume: {s['volume_surge']:.1f}x dari rata-rata\n"
+                f"• RSI 14: {s['rsi']:.1f} (Strong Momentum)\n"
+                f"• Status: Gas HAKA / Buy on Breakout! 🚀\n\n"
             )
         await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message, parse_mode="Markdown")
-        print("Pesan alert berhasil dikirim ke Telegram!")
+        print("Pesan alert HAKA berhasil dikirim ke Telegram!")
     else:
-        print("Tidak ada emiten yang memenuhi kriteria hari ini.")
+        print("Belum ada emiten yang memenuhi kriteria breakout hari ini.")
 
 if __name__ == "__main__":
     asyncio.run(run_screener())
