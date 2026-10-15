@@ -121,7 +121,7 @@ def check_stock_signal(ticker_symbol):
         support = round(df['Low'].tail(20).min(), 0)
         resist = round(df['High'].tail(20).max(), 0)
 
-        # Kalkulasi Trading Plan (Presisi Sesuai Template)
+        # Kalkulasi Trading Plan (Presisi)
         entry_low = int(close_price)
         entry_high = int(max(close_price, round(close_price * 1.02, 0)))
         
@@ -134,6 +134,9 @@ def check_stock_signal(ticker_symbol):
 
         # Area Risiko Breakdown
         risk_area = int(round(support * 0.94, 0))
+
+        # Rasio Lonjakan Volume vs Rata-rata 20 Hari (Katalis Bandarmologi)
+        vol_ratio = volume_shares / vol_ma20 if vol_ma20 > 0 else 1.0
 
         # Kriteria Sinyal: Strong Bullish / Momentum Breakout (Max Harga Rp 3.000)
         cond_vol = volume_shares > (vol_ma20 * 1.5)
@@ -154,6 +157,7 @@ def check_stock_signal(ticker_symbol):
                 "change": price_change,
                 "change_pct": price_change_pct,
                 "volume_lots": volume_lots,
+                "vol_ratio": vol_ratio,
                 "market_cap": market_cap,
                 "pe": f"{pe:.2f}" if isinstance(pe, (int, float)) else pe,
                 "pbv": f"{pbv:.2f}" if isinstance(pbv, (int, float)) else pbv,
@@ -193,11 +197,14 @@ async def run_screener():
                 f"📈 <b>1. SNAPSHOT HARGA</b>\n"
                 f"├── Harga Live: Rp {s['price']:,.0f}\n"
                 f"├── Perubahan: {s['change']:+,.0f} ({s['change_pct']:+.2f}%)\n"
-                f"├── Volume: {s['volume_lots']:,} lot\n"
+                f"├── Volume: {s['volume_lots']:,} lot ({s['vol_ratio']:.1f}x MA20)\n"
                 f"└── Market Cap: Rp {s['market_cap']:.2f} T\n\n"
                 f"💎 <b>2. VALUASI & FUNDAMENTAL</b>\n"
                 f"├── P/E: {s['pe']} | P/BV: {s['pbv']}x\n"
                 f"└── ROE: {s['roe']} | DER: {s['der']}x\n\n"
+                f"🐳 <b>5. BANDARMOLOGY</b>\n"
+                f"🟢 <b>Akumulasi Bandar (Markup Phase):</b>\n"
+                f"Lonjakan volume {s['vol_ratio']:.1f}x dari rata-rata menandakan dorongan akumulasi Big Money / Bandar masif.\n\n"
                 f"🧠 <b>6. ANALISIS</b>\n"
                 f"• <b>Tren:</b> 🚀 <b>Strong Bullish / Momentum Breakout</b>\n"
                 f"• <b>Katalis:</b> Dorongan buyer tinggi ({s['change_pct']:+.2f}%).\n"
