@@ -8,11 +8,65 @@ from telegram import Bot
 TELEGRAM_BOT_TOKEN = "8694938627:AAHFF-uRBgSZIWFHK941fMMKglZIeZtAeVw"
 TELEGRAM_CHAT_ID = "1768576462"
 
-# Watchlist Saham (Bluechip + Gorengan / Lapis 2 & 3)
+# Watchlist Komprehensif Sektor Non-Bluechip Teraktif
 WATCHLIST = [
-    "TLKM.JK", "BBCA.JK", "BBRI.JK", "BMRI.JK", "ASII.JK", "UNVR.JK", "PGAS.JK",
-    "BUMI.JK", "BRMS.JK", "DOOH.JK", "HUMI.JK", "STRK.JK", "GOTO.JK", 
-    "PNLF.JK", "ADRO.JK", "ANTM.JK", "ICBP.JK", "ENRG.JK", "DEWA.JK"
+    # --- 1. PROPERTI & REAL ESTATE ---
+    "PANI.JK", "BSDE.JK", "CTRA.JK", "PWON.JK", "SMRA.JK", "ASRI.JK", "LPKR.JK", 
+    "DILD.JK", "BEST.JK", "DUTI.JK", "BKSL.JK", "KIJA.JK", "MMLP.JK", "GWSA.JK",
+
+    # --- 2. KESEHATAN (Health) ---
+    "SILO.JK", "HEAL.JK", "MIKA.JK", "KAEF.JK", "INAF.JK", "DVLA.JK", "PEHA.JK", "RSGK.JK", "PRIME.JK",
+    
+    # --- 3. TEKNOLOGI, DIGITAL & KABEL ---
+    "GOTO.JK", "BUKA.JK", "EMTK.JK", "MTDL.JK", "BELI.JK", "TECH.JK", "SCMA.JK", 
+    "FREN.JK", "EXCL.JK", "ISAT.JK", "WIFI.JK", "AXIO.JK",
+    
+    # --- 4. BAHAN BAKU / BASIC MATERIALS ---
+    "BRPT.JK", "TPIA.JK", "TKIM.JK", "INKP.JK", "IMPC.JK", "ESSA.JK", "NCKL.JK", 
+    "MBMA.JK", "PSAB.JK", "DKHH.JK", "ANTM.JK", "INCO.JK", "MDKA.JK",
+    
+    # --- 5. ENERGI (Batubara, Migas, EBT & Jasa Energi) ---
+    "BUMI.JK", "BRMS.JK", "DEWA.JK", "ENRG.JK", "ELSA.JK", "DOID.JK", "RAJA.JK", "PGEO.JK",
+    "ADRO.JK", "PTBA.JK", "ITMG.JK", "HRUM.JK", "ADMR.JK", "MEDC.JK", "INDY.JK", "TOBA.JK", 
+    "BSSR.JK", "BIPI.JK", "SGER.JK", "RMKE.JK", "IATA.JK", "COAL.JK", "SHIP.JK", "SOCI.JK", "TPMA.JK",
+    
+    # --- 6. TEKSTIL & GARMEN ---
+    "ARGO.JK", "BELL.JK", "TRIS.JK", "POLU.JK", "SSTM.JK", "ERTX.JK", "ESTI.JK", "RICY.JK", "TFCO.JK", "PBRX.JK", "ADMG.JK",
+
+    # --- 7. TRANSPORTASI, LOGISTIK & MARITIM ---
+    "ASSA.JK", "BIRD.JK", "HAIS.JK", "PSSI.JK", "BBRM.JK", "GTSI.JK", "SMDR.JK", "TMAS.JK", "BOAT.JK",
+
+    # --- 8. CONSUMER, RETAIL, KEUANGAN & MULTIFINANCE ---
+    "ACES.JK", "ERAA.JK", "MAPI.JK", "MAPA.JK", "CMRY.JK", "SIDO.JK", "JPFA.JK", "CPIN.JK", "CLEO.JK", "MIDI.JK",
+    "ARTO.JK", "BRIS.JK", "PNLF.JK", "BBYB.JK", "AGRO.JK", "BABP.JK", "CFIN.JK", "ADMF.JK", "WOMF.JK",
+
+    # --- 9. PERKEBUNAN, CPO & PERTANIAN ---
+    "TAPG.JK", "DSNG.JK", "SSMS.JK", "LSIP.JK", "AALI.JK", "PALM.JK", "BWPT.JK", "SIMP.JK", "SGRO.JK", "CSRA.JK",
+
+    # --- 10. PERINDUSTRIAN & KOMPONEN OTOMOTIF ---
+    "AUTO.JK", "DRMA.JK", "SMSM.JK", "BOLT.JK", "GJTL.JK", "IMAS.JK", "KBLI.JK", "VOKS.JK", "ARNA.JK", "MARK.JK",
+
+    # --- 11. MEDIA & HIBURAN ---
+    "TMPO.JK", "FILM.JK", "FORU.JK", "MARI.JK", "MNCN.JK", "BMTR.JK", "VIVA.JK",
+
+    # --- 12. KONSTRUKSI SWASTA & INFRASTRUKTUR PENDUKUNG ---
+    "ACST.JK", "TOTL.JK", "NRCA.JK", "PPRE.JK", "WEGE.JK", "IDPR.JK", "KBLM.JK",
+
+    # --- 13. KEMASAN, PLASTIK & DAUR ULANG ---
+    "PBID.JK", "IPOL.JK", "FAPA.JK", "SOUL.JK", "TALF.JK", "KMTR.JK", "NPGF.JK",
+
+    # --- 14. PETERNAKAN & PAKAN TERNAK (POULTRY) ---
+    "MAIN.JK", "SIPD.JK", "WMUU.JK", "WMPP.JK",
+
+    # --- 15. HOTEL, RESTORAN & PARIWISATA (HOREKA) ---
+    "FAST.JK", "PZZA.JK", "PANR.JK", "BUVA.JK",
+
+    # --- 16. HOLDING INVESTASI & ASURANSI ---
+    "ABMM.JK", "ABDA.JK", "ASBI.JK", "AHAP.JK",
+
+    # --- HIGH VOLATILITY / GORENGAN SUPER AKTIF LAINNYA ---
+    "DOOH.JK", "HUMI.JK", "STRK.JK", "KEEN.JK", "CUAN.JK", "PACK.JK", 
+    "TRUE.JK", "HILL.JK", "NSSS.JK", "MOLI.JK", "JGLE.JK", "MPRO.JK", "AMMN.JK", "SAGE.JK"
 ]
 
 def check_stock_signal(ticker_symbol):
@@ -48,9 +102,8 @@ def check_stock_signal(ticker_symbol):
         close_price = float(latest['Close'])
         prev_close = float(prev['Close'])
         volume_shares = float(latest['Volume'])
-        volume_lots = int(volume_shares / 100)  # Konversi ke Lot
+        volume_lots = int(volume_shares / 100)
         vol_ma20 = float(latest['Vol_MA20'])
-        ema20 = float(latest['EMA20'])
         value = close_price * volume_shares
         
         price_change = close_price - prev_close
@@ -64,18 +117,19 @@ def check_stock_signal(ticker_symbol):
         roe_str = f"{roe*100:.2f}%" if roe else "N/A"
         der = info.get('debtToEquity', 'N/A')
 
-        # Support & Resistance Otomatis dari High/Low 20 Hari terakhir
+        # Support & Resistance Otomatis (20 Hari)
         support = round(df['Low'].tail(20).min(), 0)
         resist = round(df['High'].tail(20).max(), 0)
 
-        # Kriteria Sinyal: Strong Bullish / Momentum Breakout
+        # Kriteria Sinyal: Strong Bullish / Momentum Breakout (Max Harga Rp 3.000)
         cond_vol = volume_shares > (vol_ma20 * 1.5)
         cond_change = price_change_pct >= 3.0
         cond_rsi = float(latest['RSI14']) > 55 and float(latest['RSI14']) > float(prev['RSI14'])
         cond_macd = float(latest['MACD_Hist']) > 0
-        cond_val = value >= 1_500_000_000  # Min Transaksi 1.5 Miliar
+        cond_val = value >= 1_000_000_000  # Min Transaksi Rp 1 Miliar
+        cond_price = close_price <= 3000   # Maksimal Harga Saham Rp 3.000
 
-        if cond_vol and cond_change and cond_rsi and cond_macd and cond_val:
+        if cond_vol and cond_change and cond_rsi and cond_macd and cond_val and cond_price:
             ticker_clean = ticker_symbol.replace(".JK", "")
             news_link = f"https://www.google.com/search?q={ticker_clean}+stock+news+idx"
             
@@ -97,18 +151,19 @@ def check_stock_signal(ticker_symbol):
             }
 
     except Exception as e:
-        print(f"Error scanning {ticker_symbol}: {e}")
+        pass
     return None
 
 async def run_screener():
     bot = Bot(token=TELEGRAM_BOT_TOKEN)
     signals = []
 
-    print("Memindai emiten Strong Bullish VVIP...")
+    print("Memindai emiten Strong Bullish (Max Rp 3.000) di bursa...")
     for ticker in WATCHLIST:
         res = check_stock_signal(ticker)
         if res:
             signals.append(res)
+        await asyncio.sleep(0.3)
 
     if signals:
         for s in signals:
@@ -138,7 +193,7 @@ async def run_screener():
             
         print("Alert VVIP berhasil dikirim ke Telegram!")
     else:
-        print("Belum ada emiten Strong Bullish yang memenuhi kriteria.")
+        print("Belum ada emiten Strong Bullish di bawah Rp 3.000 yang memenuhi kriteria hari ini.")
 
 if __name__ == "__main__":
     asyncio.run(run_screener())
