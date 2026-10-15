@@ -35,10 +35,12 @@ WATCHLIST = [
 
     # --- 7. TRANSPORTASI, LOGISTIK & MARITIM ---
     "ASSA.JK", "BIRD.JK", "HAIS.JK", "PSSI.JK", "BBRM.JK", "GTSI.JK", "SMDR.JK", "TMAS.JK", "BOAT.JK",
+    "LEAD.JK", "WINS.JK", "HITS.JK", "IPCC.JK",
 
     # --- 8. CONSUMER, RETAIL, KEUANGAN & MULTIFINANCE ---
     "ACES.JK", "ERAA.JK", "MAPI.JK", "MAPA.JK", "CMRY.JK", "SIDO.JK", "JPFA.JK", "CPIN.JK", "CLEO.JK", "MIDI.JK",
     "ARTO.JK", "BRIS.JK", "PNLF.JK", "BBYB.JK", "AGRO.JK", "BABP.JK", "CFIN.JK", "ADMF.JK", "WOMF.JK",
+    "BANK.JK", "INPC.JK", "BBHI.JK", "MASB.JK", "BGTG.JK",
 
     # --- 9. PERKEBUNAN, CPO & PERTANIAN ---
     "TAPG.JK", "DSNG.JK", "SSMS.JK", "LSIP.JK", "AALI.JK", "PALM.JK", "BWPT.JK", "SIMP.JK", "SGRO.JK", "CSRA.JK",
@@ -49,8 +51,9 @@ WATCHLIST = [
     # --- 11. MEDIA & HIBURAN ---
     "TMPO.JK", "FILM.JK", "FORU.JK", "MARI.JK", "MNCN.JK", "BMTR.JK", "VIVA.JK",
 
-    # --- 12. KONSTRUKSI SWASTA & INFRASTRUKTUR PENDUKUNG ---
+    # --- 12. KONSTRUKSI SWASTA, KAWASAN INDUSTRI & INFRASTRUKTUR ---
     "ACST.JK", "TOTL.JK", "NRCA.JK", "PPRE.JK", "WEGE.JK", "IDPR.JK", "KBLM.JK",
+    "SSIA.JK", "IPAC.JK", "MPXL.JK", "SAME.JK",
 
     # --- 13. KEMASAN, PLASTIK & DAUR ULANG ---
     "PBID.JK", "IPOL.JK", "FAPA.JK", "SOUL.JK", "TALF.JK", "KMTR.JK", "NPGF.JK",
@@ -63,6 +66,12 @@ WATCHLIST = [
 
     # --- 16. HOLDING INVESTASI & ASURANSI ---
     "ABMM.JK", "ABDA.JK", "ASBI.JK", "AHAP.JK",
+
+    # --- 17. INFRASTRUKTUR, DATA CENTER & MENARA ---
+    "TOWR.JK", "TBIG.JK", "CENT.JK", "IBST.JK", "MTEL.JK", "BALI.JK",
+
+    # --- 18. NIKEL, MINERAL KRITIS & EV ---
+    "NICL.JK", "DKFT.JK", "CITA.JK", "NICK.JK",
 
     # --- HIGH VOLATILITY / GORENGAN SUPER AKTIF LAINNYA ---
     "DOOH.JK", "HUMI.JK", "STRK.JK", "KEEN.JK", "CUAN.JK", "PACK.JK", 
@@ -121,7 +130,7 @@ def check_stock_signal(ticker_symbol):
         support = round(df['Low'].tail(20).min(), 0)
         resist = round(df['High'].tail(20).max(), 0)
 
-        # Kalkulasi Trading Plan (Presisi)
+        # Kalkulasi Trading Plan
         entry_low = int(close_price)
         entry_high = int(max(close_price, round(close_price * 1.02, 0)))
         
@@ -205,4 +214,25 @@ async def run_screener():
                 f"🟢 <b>Akumulasi Bandar (Markup Phase):</b>\n"
                 f"Lonjakan volume {s['vol_ratio']:.1f}x dari rata-rata menandakan dorongan akumulasi Big Money masif.\n\n"
                 f"🧠 <b>4. ANALISIS</b>\n"
-                f"• <b>Tren:</b> 🚀 <b>Strong
+                f"• <b>Tren:</b> 🚀 <b>Strong Bullish / Momentum Breakout</b>\n"
+                f"• <b>Katalis:</b> Dorongan buyer tinggi ({s['change_pct']:+.2f}%).\n"
+                f"• <b>Struktur:</b> Harga menembus resistance dengan volume tebal.\n"
+                f"• <b>Risiko Breakdown:</b> Jika support {s['support']:,.0f} jebol, potensi lanjut turun ke area {s['risk_area']:,.0f}.\n\n"
+                f"🎯 <b>5. TRADING PLAN</b>\n"
+                f"• <b>Entry:</b> {s['entry_low']:,.0f} – {s['entry_high']:,.0f}\n"
+                f"• <b>Stop Loss:</b> {s['stop_loss']:,.0f}\n"
+                f"• <b>Take Profit 1:</b> {s['tp1']:,.0f}\n"
+                f"• <b>Take Profit 2:</b> {s['tp2']:,.0f}\n\n"
+                f"⭐ <b>6. RATING</b>\n"
+                f"└── 🔥 <b>Strong Bullish (High Momentum Buy)</b>\n\n"
+                f"<i>Disclaimer: Live market data & psikologi tren. DYOR!</i>"
+            )
+            await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message, parse_mode="HTML", disable_web_page_preview=True)
+            await asyncio.sleep(1)
+            
+        print("Alert VVIP berhasil dikirim ke Telegram!")
+    else:
+        print("Belum ada emiten Strong Bullish yang memenuhi kriteria hari ini.")
+
+if __name__ == "__main__":
+    asyncio.run(run_screener())
