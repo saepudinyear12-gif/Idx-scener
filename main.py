@@ -199,8 +199,9 @@ async def run_screener():
                 f"├── P/E: {s['pe']} | P/BV: {s['pbv']}x\n"
                 f"└── ROE: {s['roe']} | DER: {s['der']}x\n\n"
                 f"🧠 <b>6. ANALISIS</b>\n"
+                f"• <b>Tren:</b> 🚀 <b>Strong Bullish / Momentum Breakout</b>\n"
                 f"• <b>Katalis:</b> Dorongan buyer tinggi ({s['change_pct']:+.2f}%).\n"
-                f"• <b>Struktur:</b> Harga menembus momentum dengan volume tebal.\n"
+                f"• <b>Struktur:</b> Harga menembus resistance dengan volume tebal.\n"
                 f"• <b>Risiko Breakdown:</b> Jika support {s['support']:,.0f} jebol, potensi lanjut turun ke area {s['risk_area']:,.0f}.\n\n"
                 f"🎯 <b>7. TRADING PLAN</b>\n"
                 f"• <b>Entry:</b> {s['entry_low']:,.0f} – {s['entry_high']:,.0f}\n"
@@ -208,7 +209,7 @@ async def run_screener():
                 f"• <b>Take Profit 1:</b> {s['tp1']:,.0f}\n"
                 f"• <b>Take Profit 2:</b> {s['tp2']:,.0f}\n\n"
                 f"⭐ <b>8. RATING</b>\n"
-                f"└── 🔥 <b>High Momentum Buy</b>\n\n"
+                f"└── 🔥 <b>Strong Bullish (High Momentum Buy)</b>\n\n"
                 f"<i>Disclaimer: Live market data & psikologi tren. DYOR!</i>"
             )
             await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message, parse_mode="HTML", disable_web_page_preview=True)
