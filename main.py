@@ -121,6 +121,20 @@ def check_stock_signal(ticker_symbol):
         support = round(df['Low'].tail(20).min(), 0)
         resist = round(df['High'].tail(20).max(), 0)
 
+        # Kalkulasi Trading Plan (Presisi Sesuai Template)
+        entry_low = int(close_price)
+        entry_high = int(max(close_price, round(close_price * 1.02, 0)))
+        
+        # Stop Loss (-3% s.d -4% atau di bawah Support)
+        stop_loss = int(min(round(close_price * 0.965, 0), support if support < close_price else close_price * 0.965))
+        
+        # Take Profit 1 & 2
+        tp1 = int(round(close_price * 1.05, 0))
+        tp2 = int(round(close_price * 1.10, 0))
+
+        # Area Risiko Breakdown
+        risk_area = int(round(support * 0.94, 0))
+
         # Kriteria Sinyal: Strong Bullish / Momentum Breakout (Max Harga Rp 3.000)
         cond_vol = volume_shares > (vol_ma20 * 1.5)
         cond_change = price_change_pct >= 3.0
@@ -147,6 +161,12 @@ def check_stock_signal(ticker_symbol):
                 "der": f"{der:.2f}" if isinstance(der, (int, float)) else der,
                 "support": support,
                 "resist": resist,
+                "entry_low": entry_low,
+                "entry_high": entry_high,
+                "stop_loss": stop_loss,
+                "tp1": tp1,
+                "tp2": tp2,
+                "risk_area": risk_area,
                 "news_link": news_link
             }
 
@@ -158,7 +178,7 @@ async def run_screener():
     bot = Bot(token=TELEGRAM_BOT_TOKEN)
     signals = []
 
-    print("Memindai emiten Strong Bullish untuk HAKA & BSJP (Max Rp 3.000)...")
+    print("Memindai emiten Strong Bullish VVIP (Max Rp 3.000)...")
     for ticker in WATCHLIST:
         res = check_stock_signal(ticker)
         if res:
@@ -168,7 +188,7 @@ async def run_screener():
     if signals:
         for s in signals:
             message = (
-                f"🔥 <b>HAKA ALERT VVIP — ${s['ticker']}</b> 🔥\n\n"
+                f"🔥 <b>BOT VVIP — ${s['ticker']}</b> 🔥\n\n"
                 f"🏢 <b>Emiten:</b> {s['company_name']}\n\n"
                 f"📈 <b>1. SNAPSHOT HARGA</b>\n"
                 f"├── Harga Live: Rp {s['price']:,.0f}\n"
@@ -178,24 +198,23 @@ async def run_screener():
                 f"💎 <b>2. VALUASI & FUNDAMENTAL</b>\n"
                 f"├── P/E: {s['pe']} | P/BV: {s['pbv']}x\n"
                 f"└── ROE: {s['roe']} | DER: {s['der']}x\n\n"
-                f"📊 <b>3. TEKNIKAL & TREN</b>\n"
-                f"├── Tren: 🚀 Strong Bullish / Momentum Breakout\n"
-                f"└── Support / Resist: {s['support']:,.0f} / {s['resist']:,.0f}\n\n"
-                f"⚡ <b>4. PLAN EKSEKUSI HAKA / BSJP</b>\n"
-                f"├── Strategi: Hantam Kanan / Buy on Close\n"
-                f"├── Target TP: Mendekati Resistance ({s['resist']:,.0f})\n"
-                f"└── Stop Loss: Di bawah Support ({s['support']:,.0f})\n\n"
-                f"🐳 <b>5. BANDARMOLOGY</b>\n"
-                f"🟢 <b>Akumulasi Bandar (Markup Phase):</b>\n"
-                f"Lonjakan volume & dorongan buyer masif.\n\n"
-                f"📰 <b>6. BERITA & ANALISIS</b>\n"
-                f"• {s['ticker']} - Market Update\n"
-                f"🔗 <a href='{s['news_link']}'>Baca selengkapnya</a>"
+                f"🧠 <b>6. ANALISIS</b>\n"
+                f"• <b>Katalis:</b> Dorongan buyer tinggi ({s['change_pct']:+.2f}%).\n"
+                f"• <b>Struktur:</b> Harga menembus momentum dengan volume tebal.\n"
+                f"• <b>Risiko Breakdown:</b> Jika support {s['support']:,.0f} jebol, potensi lanjut turun ke area {s['risk_area']:,.0f}.\n\n"
+                f"🎯 <b>7. TRADING PLAN</b>\n"
+                f"• <b>Entry:</b> {s['entry_low']:,.0f} – {s['entry_high']:,.0f}\n"
+                f"• <b>Stop Loss:</b> {s['stop_loss']:,.0f}\n"
+                f"• <b>Take Profit 1:</b> {s['tp1']:,.0f}\n"
+                f"• <b>Take Profit 2:</b> {s['tp2']:,.0f}\n\n"
+                f"⭐ <b>8. RATING</b>\n"
+                f"└── 🔥 <b>High Momentum Buy</b>\n\n"
+                f"<i>Disclaimer: Live market data & psikologi tren. DYOR!</i>"
             )
             await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message, parse_mode="HTML", disable_web_page_preview=True)
             await asyncio.sleep(1)
             
-        print("Alert HAKA VVIP berhasil dikirim ke Telegram!")
+        print("Alert VVIP berhasil dikirim ke Telegram!")
     else:
         print("Belum ada emiten Strong Bullish yang memenuhi kriteria hari ini.")
 
