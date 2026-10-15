@@ -8,7 +8,7 @@ from telegram import Bot
 TELEGRAM_BOT_TOKEN = "8694938627:AAHFF-uRBgSZIWFHK941fMMKglZIeZtAeVw"
 TELEGRAM_CHAT_ID = "1768576462"
 
-# Watchlist Komprehensif Sektor Non-Bluechip Teraktif
+# Watchlist Komprehensif Sektor Non-Bluechip Teraktif & High Volatility
 WATCHLIST = [
     # --- 1. PROPERTI & REAL ESTATE ---
     "PANI.JK", "BSDE.JK", "CTRA.JK", "PWON.JK", "SMRA.JK", "ASRI.JK", "LPKR.JK", 
@@ -158,7 +158,7 @@ async def run_screener():
     bot = Bot(token=TELEGRAM_BOT_TOKEN)
     signals = []
 
-    print("Memindai emiten Strong Bullish (Max Rp 3.000) di bursa...")
+    print("Memindai emiten Strong Bullish untuk HAKA & BSJP (Max Rp 3.000)...")
     for ticker in WATCHLIST:
         res = check_stock_signal(ticker)
         if res:
@@ -168,7 +168,7 @@ async def run_screener():
     if signals:
         for s in signals:
             message = (
-                f"|| <b>SCANNER VVIP — ${s['ticker']}</b> ||\n\n"
+                f"🔥 <b>HAKA ALERT VVIP — ${s['ticker']}</b> 🔥\n\n"
                 f"🏢 <b>Emiten:</b> {s['company_name']}\n\n"
                 f"📈 <b>1. SNAPSHOT HARGA</b>\n"
                 f"├── Harga Live: Rp {s['price']:,.0f}\n"
@@ -181,19 +181,23 @@ async def run_screener():
                 f"📊 <b>3. TEKNIKAL & TREN</b>\n"
                 f"├── Tren: 🚀 Strong Bullish / Momentum Breakout\n"
                 f"└── Support / Resist: {s['support']:,.0f} / {s['resist']:,.0f}\n\n"
-                f"🐳 <b>4. BANDARMOLOGY</b>\n"
+                f"⚡ <b>4. PLAN EKSEKUSI HAKA / BSJP</b>\n"
+                f"├── Strategi: Hantam Kanan / Buy on Close\n"
+                f"├── Target TP: Mendekati Resistance ({s['resist']:,.0f})\n"
+                f"└── Stop Loss: Di bawah Support ({s['support']:,.0f})\n\n"
+                f"🐳 <b>5. BANDARMOLOGY</b>\n"
                 f"🟢 <b>Akumulasi Bandar (Markup Phase):</b>\n"
-                f"Terdeteksi lonjakan volume dengan dorongan bid tebal.\n\n"
-                f"📰 <b>5. BERITA</b>\n"
-                f"• {s['ticker']} - Analisis Teknikal & Market Update\n"
+                f"Lonjakan volume & dorongan buyer masif.\n\n"
+                f"📰 <b>6. BERITA & ANALISIS</b>\n"
+                f"• {s['ticker']} - Market Update\n"
                 f"🔗 <a href='{s['news_link']}'>Baca selengkapnya</a>"
             )
             await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message, parse_mode="HTML", disable_web_page_preview=True)
             await asyncio.sleep(1)
             
-        print("Alert VVIP berhasil dikirim ke Telegram!")
+        print("Alert HAKA VVIP berhasil dikirim ke Telegram!")
     else:
-        print("Belum ada emiten Strong Bullish di bawah Rp 3.000 yang memenuhi kriteria hari ini.")
+        print("Belum ada emiten Strong Bullish yang memenuhi kriteria hari ini.")
 
 if __name__ == "__main__":
     asyncio.run(run_screener())
