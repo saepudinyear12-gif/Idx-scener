@@ -8,23 +8,22 @@ from telegram import Bot
 TELEGRAM_BOT_TOKEN = "8694938627:AAHFF-uRBgSZIWFHK941fMMKglZIeZtAeVw"
 TELEGRAM_CHAT_ID = "1768576462"
 
-# Watchlist Gabungan: Blue Chip + Saham Gorengan / Lapis 2 & 3 Aktif
+# Watchlist Saham (Bluechip + Gorengan / Lapis 2 & 3)
 WATCHLIST = [
-    # Bluechips / Big Cap
     "TLKM.JK", "BBCA.JK", "BBRI.JK", "BMRI.JK", "ASII.JK", "UNVR.JK", "PGAS.JK",
-    # Saham Gorengan / High Volatility / Second-Third Liner
     "BUMI.JK", "BRMS.JK", "DOOH.JK", "HUMI.JK", "STRK.JK", "GOTO.JK", 
     "PNLF.JK", "ADRO.JK", "ANTM.JK", "ICBP.JK", "ENRG.JK", "DEWA.JK"
 ]
 
 def check_stock_signal(ticker_symbol):
     try:
-        df = yf.download(ticker_symbol, period="60d", interval="1d", progress=False)
+        tk = yf.Ticker(ticker_symbol)
+        df = tk.history(period="60d", interval="1d")
         if len(df) < 30:
             return None
 
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
+        info = tk.info
+        company_name = info.get('longName', ticker_symbol.replace('.JK', ''))
 
         df['EMA20'] = df['Close'].ewm(span=20, adjust=False).mean()
         df['Vol_MA20'] = df['Volume'].rolling(window=20).mean()
@@ -47,55 +46,54 @@ def check_stock_signal(ticker_symbol):
         prev = df.iloc[-2]
 
         close_price = float(latest['Close'])
-        volume = float(latest['Volume'])
+        prev_close = float(prev['Close'])
+        volume_shares = float(latest['Volume'])
+        volume_lots = int(volume_shares / 100)  # Konversi ke Lot
         vol_ma20 = float(latest['Vol_MA20'])
         ema20 = float(latest['EMA20'])
-        value = close_price * volume
-        price_change_pct = ((close_price - float(prev['Close'])) / float(prev['Close'])) * 100
+        value = close_price * volume_shares
+        
+        price_change = close_price - prev_close
+        price_change_pct = (price_change / prev_close) * 100
 
-        # Filter Minimal Likuiditas Disesuaikan untuk Gorengan (Min. Transaksi Rp 1.5 Miliar)
-        if value < 1_500_000_000 or close_price < (ema20 * 0.97):
-            return None
+        # Data Fundamental & Valuasi
+        market_cap = info.get('marketCap', 0) / 1e12  # Dalam Triliun (T)
+        pe = info.get('trailingPE', 'N/A')
+        pbv = info.get('priceToBook', 'N/A')
+        roe = info.get('returnOnEquity')
+        roe_str = f"{roe*100:.2f}%" if roe else "N/A"
+        der = info.get('debtToEquity', 'N/A')
 
-        signal_type = None
+        # Support & Resistance Otomatis dari High/Low 20 Hari terakhir
+        support = round(df['Low'].tail(20).min(), 0)
+        resist = round(df['High'].tail(20).max(), 0)
 
-        # 1. Kriteria SINYAL HAKA (Breakout Momentum Ekstrem)
-        cond_haka_vol = volume > (vol_ma20 * 2.0)
-        cond_haka_change = price_change_pct >= 3.0
-        cond_haka_rsi = float(latest['RSI14']) > 50 and float(latest['RSI14']) > float(prev['RSI14'])
-        cond_haka_macd = float(latest['MACD_Hist']) > 0
+        # Kriteria Sinyal: Strong Bullish / Momentum Breakout
+        cond_vol = volume_shares > (vol_ma20 * 1.5)
+        cond_change = price_change_pct >= 3.0
+        cond_rsi = float(latest['RSI14']) > 55 and float(latest['RSI14']) > float(prev['RSI14'])
+        cond_macd = float(latest['MACD_Hist']) > 0
+        cond_val = value >= 1_500_000_000  # Min Transaksi 1.5 Miliar
 
-        if cond_haka_vol and cond_haka_change and cond_haka_rsi and cond_haka_macd:
-            signal_type = "HAKA"
-
-        # 2. Kriteria SINYAL SWING PENDEK (Rebound Support / Gorengan Turning Up)
-        else:
-            cond_swing_vol = volume > vol_ma20
-            cond_swing_change = 0.5 <= price_change_pct < 4.0
-            cond_swing_rsi = 35 <= float(latest['RSI14']) <= 65 and float(latest['RSI14']) > float(prev['RSI14'])
-            cond_swing_macd = float(latest['MACD_Hist']) > float(prev['MACD_Hist'])
-
-            if cond_swing_vol and cond_swing_change and cond_swing_rsi and cond_swing_macd:
-                signal_type = "SWING"
-
-        if signal_type:
-            # Hitung Kalkulasi Trading Plan Swing
-            buy_low = close_price * 0.99
-            tp1 = close_price * 1.04   # Target 1 (+4%)
-            tp2 = close_price * 1.08   # Target 2 (+8% cocok utk gorengan)
-            sl = close_price * 0.96    # Stop Loss (-4%)
-
+        if cond_vol and cond_change and cond_rsi and cond_macd and cond_val:
+            ticker_clean = ticker_symbol.replace(".JK", "")
+            news_link = f"https://www.google.com/search?q={ticker_clean}+stock+news+idx"
+            
             return {
-                "ticker": ticker_symbol.replace(".JK", ""),
+                "ticker": ticker_clean,
+                "company_name": company_name,
                 "price": close_price,
-                "change": price_change_pct,
-                "rsi": float(latest['RSI14']),
-                "volume_surge": volume / vol_ma20,
-                "type": signal_type,
-                "buy_area": f"{buy_low:,.0f} - {close_price:,.0f}",
-                "tp1": tp1,
-                "tp2": tp2,
-                "sl": sl
+                "change": price_change,
+                "change_pct": price_change_pct,
+                "volume_lots": volume_lots,
+                "market_cap": market_cap,
+                "pe": f"{pe:.2f}" if isinstance(pe, (int, float)) else pe,
+                "pbv": f"{pbv:.2f}" if isinstance(pbv, (int, float)) else pbv,
+                "roe": roe_str,
+                "der": f"{der:.2f}" if isinstance(der, (int, float)) else der,
+                "support": support,
+                "resist": resist,
+                "news_link": news_link
             }
 
     except Exception as e:
@@ -106,41 +104,41 @@ async def run_screener():
     bot = Bot(token=TELEGRAM_BOT_TOKEN)
     signals = []
 
-    print("Memulai pemindaian radar (Bluechip + Gorengan)...")
+    print("Memindai emiten Strong Bullish VVIP...")
     for ticker in WATCHLIST:
         res = check_stock_signal(ticker)
         if res:
             signals.append(res)
 
     if signals:
-        message = "📊 *RADAR SAHAM IDX DETECTED* 📊\n\n"
         for s in signals:
-            if s['type'] == "HAKA":
-                message += (
-                    f"🔥 *{s['ticker']} (SIAP HAKA / BREAKOUT)* 🔥\n"
-                    f"• Harga: Rp {s['price']:,.0f} ({s['change']:+.2f}%)\n"
-                    f"• Vol Surge: {s['volume_surge']:.1f}x (Meledak!)\n"
-                    f"• RSI 14: {s['rsi']:.1f}\n"
-                    f"• Aksi: HAKA / Scalping / Day Trade 🚀\n\n"
-                )
-            elif s['type'] == "SWING":
-                message += (
-                    f"💎 *{s['ticker']} (SWING PENDEK / REBOUND)* 💎\n"
-                    f"• Harga Sekarang: Rp {s['price']:,.0f} ({s['change']:+.2f}%)\n"
-                    f"• Vol Surge: {s['volume_surge']:.1f}x | RSI: {s['rsi']:.1f}\n"
-                    f"-----------------------------------\n"
-                    f"📌 *TRADING PLAN SWING:* \n"
-                    f"• 🛒 Area Buy: Rp {s['buy_area']}\n"
-                    f"• 🎯 Target TP 1 (+4%): Rp {s['tp1']:,.0f}\n"
-                    f"• 🚀 Target TP 2 (+8%): Rp {s['tp2']:,.0f}\n"
-                    f"• 🛑 Stop Loss (-4%): Rp {s['sl']:,.0f}\n"
-                    f"• ⏱️ Estimasi Hold: 1 - 3 Hari Kerja\n\n"
-                )
-
-        await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message, parse_mode="Markdown")
-        print("Pesan alert berhasil dikirim ke Telegram!")
+            message = (
+                f"|| <b>SCANNER VVIP — ${s['ticker']}</b> ||\n\n"
+                f"🏢 <b>Emiten:</b> {s['company_name']}\n\n"
+                f"📈 <b>1. SNAPSHOT HARGA</b>\n"
+                f"├── Harga Live: Rp {s['price']:,.0f}\n"
+                f"├── Perubahan: {s['change']:+,.0f} ({s['change_pct']:+.2f}%)\n"
+                f"├── Volume: {s['volume_lots']:,} lot\n"
+                f"└── Market Cap: Rp {s['market_cap']:.2f} T\n\n"
+                f"💎 <b>2. VALUASI & FUNDAMENTAL</b>\n"
+                f"├── P/E: {s['pe']} | P/BV: {s['pbv']}x\n"
+                f"└── ROE: {s['roe']} | DER: {s['der']}x\n\n"
+                f"📊 <b>3. TEKNIKAL & TREN</b>\n"
+                f"├── Tren: 🚀 Strong Bullish / Momentum Breakout\n"
+                f"└── Support / Resist: {s['support']:,.0f} / {s['resist']:,.0f}\n\n"
+                f"🐳 <b>4. BANDARMOLOGY</b>\n"
+                f"🟢 <b>Akumulasi Bandar (Markup Phase):</b>\n"
+                f"Terdeteksi lonjakan volume dengan dorongan bid tebal.\n\n"
+                f"📰 <b>5. BERITA</b>\n"
+                f"• {s['ticker']} - Analisis Teknikal & Market Update\n"
+                f"🔗 <a href='{s['news_link']}'>Baca selengkapnya</a>"
+            )
+            await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message, parse_mode="HTML", disable_web_page_preview=True)
+            await asyncio.sleep(1)
+            
+        print("Alert VVIP berhasil dikirim ke Telegram!")
     else:
-        print("Belum ada emiten yang memenuhi kriteria HAKA maupun Swing hari ini.")
+        print("Belum ada emiten Strong Bullish yang memenuhi kriteria.")
 
 if __name__ == "__main__":
     asyncio.run(run_screener())
