@@ -192,8 +192,7 @@ async def run_screener():
     if signals:
         for s in signals:
             message = (
-                f"🔥 <b>BOT VVIP — ${s['ticker']}</b> 🔥\n\n"
-                f"🏢 <b>Emiten:</b> {s['company_name']}\n\n"
+                f"🏢 <b>Emiten:</b> {s['company_name']} (${s['ticker']})\n\n"
                 f"📈 <b>1. SNAPSHOT HARGA</b>\n"
                 f"├── Harga Live: Rp {s['price']:,.0f}\n"
                 f"├── Perubahan: {s['change']:+,.0f} ({s['change_pct']:+.2f}%)\n"
@@ -202,29 +201,8 @@ async def run_screener():
                 f"💎 <b>2. VALUASI & FUNDAMENTAL</b>\n"
                 f"├── P/E: {s['pe']} | P/BV: {s['pbv']}x\n"
                 f"└── ROE: {s['roe']} | DER: {s['der']}x\n\n"
-                f"🐳 <b>5. BANDARMOLOGY</b>\n"
+                f"🐳 <b>3. BANDARMOLOGY</b>\n"
                 f"🟢 <b>Akumulasi Bandar (Markup Phase):</b>\n"
-                f"Lonjakan volume {s['vol_ratio']:.1f}x dari rata-rata menandakan dorongan akumulasi Big Money / Bandar masif.\n\n"
-                f"🧠 <b>6. ANALISIS</b>\n"
-                f"• <b>Tren:</b> 🚀 <b>Strong Bullish / Momentum Breakout</b>\n"
-                f"• <b>Katalis:</b> Dorongan buyer tinggi ({s['change_pct']:+.2f}%).\n"
-                f"• <b>Struktur:</b> Harga menembus resistance dengan volume tebal.\n"
-                f"• <b>Risiko Breakdown:</b> Jika support {s['support']:,.0f} jebol, potensi lanjut turun ke area {s['risk_area']:,.0f}.\n\n"
-                f"🎯 <b>7. TRADING PLAN</b>\n"
-                f"• <b>Entry:</b> {s['entry_low']:,.0f} – {s['entry_high']:,.0f}\n"
-                f"• <b>Stop Loss:</b> {s['stop_loss']:,.0f}\n"
-                f"• <b>Take Profit 1:</b> {s['tp1']:,.0f}\n"
-                f"• <b>Take Profit 2:</b> {s['tp2']:,.0f}\n\n"
-                f"⭐ <b>8. RATING</b>\n"
-                f"└── 🔥 <b>Strong Bullish (High Momentum Buy)</b>\n\n"
-                f"<i>Disclaimer: Live market data & psikologi tren. DYOR!</i>"
-            )
-            await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message, parse_mode="HTML", disable_web_page_preview=True)
-            await asyncio.sleep(1)
-            
-        print("Alert VVIP berhasil dikirim ke Telegram!")
-    else:
-        print("Belum ada emiten Strong Bullish yang memenuhi kriteria hari ini.")
-
-if __name__ == "__main__":
-    asyncio.run(run_screener())
+                f"Lonjakan volume {s['vol_ratio']:.1f}x dari rata-rata menandakan dorongan akumulasi Big Money masif.\n\n"
+                f"🧠 <b>4. ANALISIS</b>\n"
+                f"• <b>Tren:</b> 🚀 <b>Strong
