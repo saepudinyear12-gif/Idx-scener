@@ -8,7 +8,7 @@ on:
     - cron: '15 2 * * 1-5'
     # 3. Jam 09:30 WIB (02:30 UTC) - Pre-ARA Second Wave
     - cron: '30 2 * * 1-5'
-    # 4. Jam 15:35 WIB (08:35 UTC) - Sesi Sore (BSJP) -> Diubah ke 15:35
+    # 4. Jam 15:35 WIB (08:35 UTC) - Sesi Sore (BSJP)
     - cron: '35 8 * * 1-5'
   workflow_dispatch: # Tombol tes manual
 
@@ -28,7 +28,7 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pandas yfinance requests
+          pip install pandas yfinance requests python-telegram-bot
 
       - name: Run Main Screener Script
         env:
