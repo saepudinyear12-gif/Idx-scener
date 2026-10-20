@@ -4,7 +4,7 @@ on:
   schedule:
     # 1. Jam 09:00 WIB (02:00 UTC) - Sesi Pagi (HAKA / Scalping Pembukaan)
     - cron: '0 2 * * 1-5'
-    # 2. Jam 15:50 WIB (08:50 UTC) - Sesi Sore (BSJP / Beli Sore Jual Pagi)
+    # 2. Jam 15:30 WIB (08:50 UTC) - Sesi Sore (BSJP / Beli Sore Jual Pagi)
     - cron: '50 8 * * 1-5'
   workflow_dispatch: # Tombol 'Run workflow' manual tetap aktif kapan saja
 
