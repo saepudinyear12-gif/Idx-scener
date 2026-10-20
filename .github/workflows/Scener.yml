@@ -2,14 +2,18 @@ name: Stock Screener Bot
 
 on:
   schedule:
-    # 1. Jam 09:00 WIB (02:00 UTC) - Sesi Pagi (HAKA / Scalping Pembukaan)
+    # 1. Jam 09:00 WIB (02:00 UTC) - Sesi Pagi (HAKA / Scalping)
     - cron: '0 2 * * 1-5'
-    # 2. Jam 15:30 WIB (08:50 UTC) - Sesi Sore (BSJP / Beli Sore Jual Pagi)
-    - cron: '50 8 * * 1-5'
-  workflow_dispatch: # Tombol 'Run workflow' manual tetap aktif kapan saja
+    # 2. Jam 09:15 WIB (02:15 UTC) - Pre-ARA Early Momentum 🚀
+    - cron: '15 2 * * 1-5'
+    # 3. Jam 09:30 WIB (02:30 UTC) - Pre-ARA Second Wave
+    - cron: '30 2 * * 1-5'
+    # 4. Jam 15:35 WIB (08:35 UTC) - Sesi Sore (BSJP) -> Diubah ke 15:35
+    - cron: '35 8 * * 1-5'
+  workflow_dispatch: # Tombol tes manual
 
 jobs:
-  run-screener:
+  run-all-screeners:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,7 +28,16 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pandas yfinance python-telegram-bot
+          pip install pandas yfinance requests
 
-      - name: Run Screener Script
+      - name: Run Main Screener Script
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python main.py
+
+      - name: Run Pre-ARA Screener Script
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python pre_ara.py
