@@ -130,21 +130,21 @@ def check_stock_signal(ticker_symbol):
         support = round(df['Low'].tail(20).min(), 0)
         resist = round(df['High'].tail(20).max(), 0)
 
-        # Kalkulasi Trading Plan
+        # Kalkulasi Trading Plan (Disesuaikan gaya target proporsional mirip gambar pertama)
         entry_low = int(close_price)
         entry_high = int(max(close_price, round(close_price * 1.02, 0)))
         
-        # Stop Loss (-3% s.d -4% atau di bawah Support)
-        stop_loss = int(min(round(close_price * 0.965, 0), support if support < close_price else close_price * 0.965))
+        # Stop Loss proporsional di bawah support terdekat
+        stop_loss = int(min(round(close_price * 0.92, 0), support if support < close_price else close_price * 0.92))
         
-        # Take Profit 1 & 2
-        tp1 = int(round(close_price * 1.05, 0))
-        tp2 = int(round(close_price * 1.10, 0))
+        # Take Profit 1 & 2 (TP1 ~+7%, TP2 ~+12% atau mengikuti resistance)
+        tp1 = int(round(close_price * 1.07, 0))
+        tp2 = int(resist) if resist > close_price * 1.07 else int(round(close_price * 1.12, 0))
 
         # Area Risiko Breakdown
         risk_area = int(round(support * 0.94, 0))
 
-        # Rasio Lonjakan Volume vs Rata-rata 20 Hari (Katalis Bandarmologi)
+        # Rasio Lonjakan Volume vs Rata-rata 20 Hari
         vol_ratio = volume_shares / vol_ma20 if vol_ma20 > 0 else 1.0
 
         # Kriteria Sinyal: Strong Bullish / Momentum Breakout (Max Harga Rp 3.000)
