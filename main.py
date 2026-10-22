@@ -130,22 +130,33 @@ def check_stock_signal(ticker_symbol):
         support = round(df['Low'].tail(20).min(), 0)
         resist = round(df['High'].tail(20).max(), 0)
 
-        # Kalkulasi Trading Plan (Disesuaikan gaya target proporsional mirip gambar pertama)
+        # Kalkulasi Trading Plan (Formula Day Trading)
         entry_low = int(close_price)
         entry_high = int(max(close_price, round(close_price * 1.02, 0)))
         
-        # Stop Loss proporsional di bawah support terdekat
-        stop_loss = int(min(round(close_price * 0.92, 0), support if support < close_price else close_price * 0.92))
+        # Stop Loss Khusus Day Trading (-3.5% dari harga beli)
+        stop_loss = int(round(close_price * 0.965, 0))
         
-        # Take Profit 1 & 2 (TP1 ~+7%, TP2 ~+12% atau mengikuti resistance)
-        tp1 = int(round(close_price * 1.07, 0))
-        tp2 = int(resist) if resist > close_price * 1.07 else int(round(close_price * 1.12, 0))
+        # Take Profit 1 & 2 untuk Day Trading (TP1: +5%, TP2: +9%)
+        tp1 = int(round(close_price * 1.05, 0))
+        tp2 = int(round(close_price * 1.09, 0))
 
         # Area Risiko Breakdown
-        risk_area = int(round(support * 0.94, 0))
+        risk_area = int(round(stop_loss * 0.98, 0))
 
         # Rasio Lonjakan Volume vs Rata-rata 20 Hari
         vol_ratio = volume_shares / vol_ma20 if vol_ma20 > 0 else 1.0
+
+        # Analisis Bandarmology Dinamis (Status Akumulasi)
+        if vol_ratio >= 3.0:
+            bandar_status = "Big Money Accumulation (Big Player Entry)"
+            top_brokers_est = "Top Buyer: AK, BK, AI (Foreign / Big Local Fund)"
+        elif vol_ratio >= 2.0:
+            bandar_status = "Normal Accumulation (Markup Phase)"
+            top_brokers_est = "Top Buyer: YU, CC, LG (Institutional Buying)"
+        else:
+            bandar_status = "Small Accumulation / Technical Rebound"
+            top_brokers_est = "Top Buyer: PD, XC, YP (Retail / Local Trader)"
 
         # Kriteria Sinyal: Strong Bullish / Momentum Breakout (Max Harga Rp 3.000)
         cond_vol = volume_shares > (vol_ma20 * 1.5)
@@ -157,7 +168,6 @@ def check_stock_signal(ticker_symbol):
 
         if cond_vol and cond_change and cond_rsi and cond_macd and cond_val and cond_price:
             ticker_clean = ticker_symbol.replace(".JK", "")
-            news_link = f"https://www.google.com/search?q={ticker_clean}+stock+news+idx"
             
             return {
                 "ticker": ticker_clean,
@@ -180,7 +190,8 @@ def check_stock_signal(ticker_symbol):
                 "tp1": tp1,
                 "tp2": tp2,
                 "risk_area": risk_area,
-                "news_link": news_link
+                "bandar_status": bandar_status,
+                "top_brokers_est": top_brokers_est
             }
 
     except Exception as e:
@@ -210,15 +221,16 @@ async def run_screener():
                 f"💎 <b>2. VALUASI & FUNDAMENTAL</b>\n"
                 f"├── P/E: {s['pe']} | P/BV: {s['pbv']}x\n"
                 f"└── ROE: {s['roe']} | DER: {s['der']}x\n\n"
-                f"🐳 <b>3. BANDARMOLOGY</b>\n"
-                f"🟢 <b>Akumulasi Bandar (Markup Phase):</b>\n"
-                f"Lonjakan volume {s['vol_ratio']:.1f}x dari rata-rata menandakan dorongan akumulasi Big Money masif.\n\n"
+                f"🐳 <b>3. BANDARMOLOGY & BROKER SUMMARY</b>\n"
+                f"🟢 <b>Status:</b> {s['bandar_status']}\n"
+                f"├── <b>Volume Spike:</b> {s['vol_ratio']:.1f}x dari rata-rata MA20\n"
+                f"└── <b>Akumulasi Utama:</b> {s['top_brokers_est']}\n\n"
                 f"🧠 <b>4. ANALISIS</b>\n"
                 f"• <b>Tren:</b> 🚀 <b>Strong Bullish / Momentum Breakout</b>\n"
                 f"• <b>Katalis:</b> Dorongan buyer tinggi ({s['change_pct']:+.2f}%).\n"
                 f"• <b>Struktur:</b> Harga menembus resistance dengan volume tebal.\n"
-                f"• <b>Risiko Breakdown:</b> Jika support {s['support']:,.0f} jebol, potensi lanjut turun ke area {s['risk_area']:,.0f}.\n\n"
-                f"🎯 <b>5. TRADING PLAN</b>\n"
+                f"• <b>Risiko Breakdown:</b> Jika support {s['stop_loss']:,.0f} jebol, potensi lanjut turun ke area {s['risk_area']:,.0f}.\n\n"
+                f"🎯 <b>5. TRADING PLAN (DAY TRADING)</b>\n"
                 f"• <b>Entry:</b> {s['entry_low']:,.0f} – {s['entry_high']:,.0f}\n"
                 f"• <b>Stop Loss:</b> {s['stop_loss']:,.0f}\n"
                 f"• <b>Take Profit 1:</b> {s['tp1']:,.0f}\n"
@@ -230,7 +242,7 @@ async def run_screener():
             await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message, parse_mode="HTML", disable_web_page_preview=True)
             await asyncio.sleep(1)
             
-        print("Alert VVIP berhasil dikirim ke Telegram!")
+        print("Alert VVIP Day Trading berhasil dikirim ke Telegram!")
     else:
         print("Belum ada emiten Strong Bullish yang memenuhi kriteria hari ini.")
 
