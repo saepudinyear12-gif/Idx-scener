@@ -126,14 +126,14 @@ def check_stock_signal(ticker_symbol):
         roe_str = f"{roe*100:.2f}%" if roe else "N/A"
         der = info.get('debtToEquity', 'N/A')
 
-        # Pemetaan SnD (Supply & Demand / Support & Resistance Historis)
-        support_zone = round(df['Low'].tail(20).min(), 0)
+        # Pemetaan SnD: Support 5 Hari Terdekat (Demand Zone) & Resistance 20 Hari (Supply Zone)
+        support_zone = round(df['Low'].tail(5).min(), 0)
         resistance_zone = round(df['High'].tail(20).max(), 0)
 
-        # Kalkulasi Trading Plan berbasis SnD
+        # Kalkulasi Trading Plan Berbasis SnD & Day Trading
         entry_low = int(close_price)
         entry_high = int(max(close_price, round(close_price * 1.02, 0)))
-        stop_loss = int(round(support_zone * 0.98, 0)) # Di bawah area demand/support
+        stop_loss = int(round(support_zone * 0.98, 0)) # Di bawah area demand terdekat
         tp1 = int(resistance_zone)
         tp2 = int(round(resistance_zone * 1.05, 0))
 
@@ -181,7 +181,7 @@ async def run_screener():
     bot = Bot(token=TELEGRAM_BOT_TOKEN)
     signals = []
 
-    print("Memindai emiten SnD & Historical Transaction (Max Rp 3.000)...")
+    print("Memindai emiten SnD (Support 5 Hari) & Historical Transaction...")
     for ticker in WATCHLIST:
         res = check_stock_signal(ticker)
         if res:
@@ -196,19 +196,19 @@ async def run_screener():
                 f"├── Harga Live: Rp {s['price']:,.0f}\n"
                 f"├── Perubahan: {s['change']:+,.0f} ({s['change_pct']:+.2f}%)\n"
                 f"├── Volume: {s['volume_lots']:,} lot ({s['vol_ratio']:.1f}x MA20)\n"
-                f"├── Demand Zone (Support): Rp {s['support']:,.0f}\n"
+                f"├── Demand Zone (Support 5H): Rp {s['support']:,.0f}\n"
                 f"└── Supply Zone (Resistance): Rp {s['resist']:,.0f}\n\n"
                 f"💎 <b>2. VALUASI & FUNDAMENTAL</b>\n"
                 f"├── P/E: {s['pe']} | P/BV: {s['pbv']}x\n"
                 f"└── ROE: {s['roe']} | DER: {s['der']}x\n\n"
                 f"🐳 <b>3. BANDARMOLOGY & HISTORICAL TRANSACTION</b>\n"
-                f"🟢 <b>Akumulasi Jejak Whale:</b> Lonjakan volume {s['vol_ratio']:.1f}x dari rata-rata menunjukkan kesiapan *markup phase* dari area *demand*.\n\n"
-                f"🧠 <b>4. ANALISIS SKENARIO SnD</b>\n"
-                f"• Jika berhasil menembus resistance <b>Rp {s['resist']:,.0f}</b> dengan volume besar, silakan HAKA, peluang terbuka lebar.\n"
-                f"• Jika terjadi *false breakout* atau gagal, tunggu dan pantau di area *demand* <b>Rp {s['support']:,.0f}</b>.\n\n"
+                f"🟢 <b>Akumulasi Jejak Whale:</b> Lonjakan volume {s['vol_ratio']:.1f}x dari rata-rata menunjukkan kesiapan *markup phase*[span_1](start_span)[span_1](end_span).\n\n"
+                f"🧠 <b>4. ANALISIS SKENARIO SnD (IF-THEN)</b>\n"
+                f"• Jika berhasil menembus resistance <b>Rp {s['resist']:,.0f}</b> dengan volume besar, silakan HAKA, peluang terbuka lebar[span_2](start_span)[span_2](end_span).\n"
+                f"• Jika terjadi *false breakout* atau gagal, tunggu dan pantau di area *demand* terdekat <b>Rp {s['support']:,.0f}</b>[span_3](start_span)[span_3](end_span).\n\n"
                 f"🎯 <b>5. TRADING PLAN</b>\n"
                 f"• <b>Entry:</b> {s['entry_low']:,.0f} – {s['entry_high']:,.0f}\n"
-                f"• <b>Stop Loss (SL):</b> {s['stop_loss']:,.0f} (jebol area support)\n"
+                f"• <b>Stop Loss (SL):</b> {s['stop_loss']:,.0f} (jebol area support 5H)\n"
                 f"• <b>Take Profit 1:</b> {s['tp1']:,.0f}\n"
                 f"• <b>Take Profit 2:</b> {s['tp2']:,.0f}\n\n"
                 f"⭐ <b>6. RATING</b>\n"
