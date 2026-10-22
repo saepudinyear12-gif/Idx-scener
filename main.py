@@ -126,7 +126,7 @@ def check_stock_signal(ticker_symbol):
         roe_str = f"{roe*100:.2f}%" if roe else "N/A"
         der = info.get('debtToEquity', 'N/A')
 
-        # Pemetaan SnD: Demand Terdekat (5 Hari) & Support Lanjutan / Target Bawah (20 Hari)
+        # Pemetaan SnD & Support Bawah
         support_zone = round(df['Low'].tail(5).min(), 0)
         support_bawah = round(df['Low'].tail(20).min(), 0)
         resistance_zone = round(df['High'].tail(20).max(), 0)
@@ -142,7 +142,7 @@ def check_stock_signal(ticker_symbol):
         # Rasio Lonjakan Volume vs Rata-rata 20 Hari
         vol_ratio = volume_shares / vol_ma20 if vol_ma20 > 0 else 1.0
 
-        # Kriteria Sinyal: Strong Bullish / Momentum Breakout (Max Harga Rp 3.000)
+        # --- KRITERIA UTAMA (TETAP LENGKAP) ---
         cond_vol = volume_shares > (vol_ma20 * 1.5)
         cond_change = price_change_pct >= 3.0
         cond_rsi = float(latest['RSI14']) > 55 and float(latest['RSI14']) > float(prev['RSI14'])
@@ -150,8 +150,13 @@ def check_stock_signal(ticker_symbol):
         cond_val = value >= 1_000_000_000  # Min Transaksi Rp 1 Miliar
         cond_price = close_price <= 3000   # Maksimal Harga Saham Rp 3.000
 
+        # --- TAMBAHAN DETEKSI POTENSI ARA (SUPER MOMENTUM) ---
+        is_potential_ara = (volume_shares > (vol_ma20 * 3.0)) and (price_change_pct >= 10.0)
+
         if cond_vol and cond_change and cond_rsi and cond_macd and cond_val and cond_price:
             ticker_clean = ticker_symbol.replace(".JK", "")
+            
+            rating_text = "🚀 🔥 POTENSI ARA / SUPER MOMENTUM" if is_potential_ara else "🔥 SnD Momentum Breakout"
             
             return {
                 "ticker": ticker_clean,
@@ -173,7 +178,8 @@ def check_stock_signal(ticker_symbol):
                 "entry_high": entry_high,
                 "stop_loss": stop_loss,
                 "tp1": tp1,
-                "tp2": tp2
+                "tp2": tp2,
+                "rating_text": rating_text
             }
 
     except Exception as e:
@@ -215,7 +221,7 @@ async def run_screener():
                 f"• <b>Take Profit 1:</b> {s['tp1']:,.0f}\n"
                 f"• <b>Take Profit 2:</b> {s['tp2']:,.0f}\n\n"
                 f"⭐ <b>6. RATING</b>\n"
-                f"└── 🔥 <b>SnD Momentum Breakout</b>\n\n"
+                f"└── {s['rating_text']}\n\n"
                 f"<i>Disclaimer: Live market data & psikologi tren. DYOR!</i>"
             )
             await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message, parse_mode="HTML", disable_web_page_preview=True)
