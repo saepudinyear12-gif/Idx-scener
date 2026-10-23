@@ -140,15 +140,15 @@ def check_stock_signal(ticker_symbol):
         vol_ratio = volume_shares / vol_ma20 if vol_ma20 > 0 else 1.0
         vol_surge_pct = int((vol_ratio - 1) * 100) if vol_ratio > 1 else 0
 
-        # --- KRITERIA FILTER ---
-        cond_vol = volume_shares > (vol_ma20 * 1.5)
-        cond_change = 3.0 <= price_change_pct < 15.0  # Batas aman tidak terlalu tinggi/pucuk
-        cond_rsi = float(latest['RSI14']) > 55 and float(latest['RSI14']) > float(prev['RSI14'])
-        cond_macd = float(latest['MACD_Hist']) > 0
-        cond_val = value >= 1_000_000_000  # Min Transaksi Rp 1 Miliar
-        cond_price = close_price <= 3000   # Maksimal Harga Saham Rp 3.000
+        # --- KRITERIA FILTER YANG DILONGGARKAN ---
+        cond_vol = volume_shares > (vol_ma20 * 1.2)        # Dilonggarkan dari 1.5x ke 1.2x MA20
+        cond_change = 1.0 <= price_change_pct < 15.0      # Diperluas dari 3%-15% menjadi 1%-15%
+        cond_rsi = float(latest['RSI14']) > 50            # Diturunkan dari 55 ke 50
+        cond_macd = float(latest['MACD_Hist']) > 0        # MACD histogram positif
+        cond_val = value >= 1_000_000_000                 # Min Transaksi Rp 1 Miliar
+        cond_price = close_price <= 3000                  # Maksimal Harga Saham Rp 3.000
 
-        # Potensi ARA TINGGI jika volume > 3x dan kenaikan > 10%
+        # Potensi ARA TINGGI jika volume >= 3x dan kenaikan >= 10%
         potensi_ara = "TINGGI" if (vol_ratio >= 3.0 and price_change_pct >= 10.0) else "MENENGAH"
 
         if cond_vol and cond_change and cond_rsi and cond_macd and cond_val and cond_price:
@@ -187,7 +187,7 @@ async def run_screener():
     bot = Bot(token=TELEGRAM_BOT_TOKEN)
     signals = []
 
-    print("Memindai emiten gaya Dashboard Card...")
+    print("Memindai emiten gaya Dashboard Card (Filter Dilonggarkan)...")
     for ticker in WATCHLIST:
         res = check_stock_signal(ticker)
         if res:
@@ -196,7 +196,7 @@ async def run_screener():
 
     if signals:
         for i, s in enumerate(signals, 1):
-            # Tata letak pesan menyerupai kartu dashboard di gambar
+            # Tata letak pesan menyerupai kartu dashboard ringkas
             message = (
                 f"<b>#{i} {s['ticker']}</b>\n"
                 f"✅ <i>Dikonfirmasi Tech + SnD AI Screener</i>\n\n"
