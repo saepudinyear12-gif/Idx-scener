@@ -140,18 +140,21 @@ def check_stock_signal(ticker_symbol):
         vol_ratio = volume_shares / vol_ma20 if vol_ma20 > 0 else 1.0
         vol_surge_pct = int((vol_ratio - 1) * 100) if vol_ratio > 1 else 0
 
-        # --- KRITERIA FILTER YANG DILONGGARKAN ---
-        cond_vol = volume_shares > (vol_ma20 * 1.2)        # Dilonggarkan dari 1.5x ke 1.2x MA20
-        cond_change = 1.0 <= price_change_pct < 15.0      # Diperluas dari 3%-15% menjadi 1%-15%
-        cond_rsi = float(latest['RSI14']) > 50            # Diturunkan dari 55 ke 50
+        # --- KRITERIA FILTER (DENGAN KONFIRMASI BREAKOUT) ---
+        cond_vol = volume_shares > (vol_ma20 * 1.2)        # Lonjakan volume minimal 1.2x MA20
+        cond_change = 1.0 <= price_change_pct < 15.0      # Kenaikan 1% s.d. <15%
+        cond_rsi = float(latest['RSI14']) > 50            # RSI di atas 50
         cond_macd = float(latest['MACD_Hist']) > 0        # MACD histogram positif
         cond_val = value >= 1_000_000_000                 # Min Transaksi Rp 1 Miliar
         cond_price = close_price <= 3000                  # Maksimal Harga Saham Rp 3.000
+        
+        # Filter Breakout: Harga mendekati atau melewati resistance 20 hari (dalam radius 3% dari High 20h)
+        cond_breakout = close_price >= (resistance_zone * 0.97)
 
         # Potensi ARA TINGGI jika volume >= 3x dan kenaikan >= 10%
         potensi_ara = "TINGGI" if (vol_ratio >= 3.0 and price_change_pct >= 10.0) else "MENENGAH"
 
-        if cond_vol and cond_change and cond_rsi and cond_macd and cond_val and cond_price:
+        if cond_vol and cond_change and cond_rsi and cond_macd and cond_val and cond_price and cond_breakout:
             ticker_clean = ticker_symbol.replace(".JK", "")
             rsi_val = float(latest['RSI14'])
             
@@ -164,6 +167,7 @@ def check_stock_signal(ticker_symbol):
                 "value_miliar": value_miliar,
                 "rsi": f"{rsi_val:.1f}",
                 "vol_surge": f"{vol_surge_pct}%",
+                "vol_ratio_raw": vol_ratio,  # Disimpan untuk keperluan sorting
                 "vol_ratio": f"{vol_ratio:.1f}",
                 "potensi_ara": potensi_ara,
                 "support": support_zone,
@@ -187,7 +191,7 @@ async def run_screener():
     bot = Bot(token=TELEGRAM_BOT_TOKEN)
     signals = []
 
-    print("Memindai emiten gaya Dashboard Card (Filter Dilonggarkan)...")
+    print("Memindai emiten Breakout & Sorting Volume...")
     for ticker in WATCHLIST:
         res = check_stock_signal(ticker)
         if res:
@@ -195,11 +199,13 @@ async def run_screener():
         await asyncio.sleep(0.3)
 
     if signals:
+        # --- FITUR SORTING: URUTKAN BERDASARKAN VOLUME SURGE TERBESAR ---
+        signals = sorted(signals, key=lambda x: x['vol_ratio_raw'], reverse=True)
+
         for i, s in enumerate(signals, 1):
-            # Tata letak pesan menyerupai kartu dashboard ringkas
             message = (
                 f"<b>#{i} {s['ticker']}</b>\n"
-                f"✅ <i>Dikonfirmasi Tech + SnD AI Screener</i>\n\n"
+                f"✅ <i>Breakout & Volume Surge Screener</i>\n\n"
                 f"<b>KUAT 🔼 (Analisis Tren & Whale)</b>\n"
                 f"├── Harga Live: Rp {s['price']:,.0f} ({s['change_pct']:+.2f}%)\n"
                 f"├── Zona Entry (Fib/SnD): <b>Rp {s['entry']:,.0f}</b>\n"
@@ -210,18 +216,18 @@ async def run_screener():
                 f"├── Volume Surge: {s['vol_surge']} ⬆️ ({s['vol_ratio']}x MA20)\n"
                 f"├── Potensi ARA Besok: <b>{s['potensi_ara']}</b>\n"
                 f"├── Demand Zone: Rp {s['support']:,.0f}\n"
-                f"└── Supply Zone: Rp {s['resist']:,.0f}\n\n"
+                f"└── Supply Zone (Breakout): Rp {s['resist']:,.0f}\n\n"
                 f"💎 <b>Fundamental & Valuasi:</b>\n"
                 f"└── P/E: {s['pe']} | P/BV: {s['pbv']}x | ROE: {s['roe']}\n\n"
-                f"⚡ <i>Sinyal Akumulasi Whale Terdeteksi ✅</i>\n\n"
+                f"⚡ <i>Sinyal Akumulasi & Breakout Terkonfirmasi ✅</i>\n\n"
                 f"<blockquote>🎯 <b>Potensi ARA {s['potensi_ara']}</b> — akumulasi & momentum kuat (heuristik, BUKAN jaminan). DYOR!</blockquote>"
             )
             await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message, parse_mode="HTML", disable_web_page_preview=True)
             await asyncio.sleep(1)
             
-        print("Alert Dashboard Card Berhasil dikirim ke Telegram!")
+        print("Alert Breakout & Sorting Berhasil dikirim ke Telegram!")
     else:
-        print("Belum ada emiten yang memenuhi kriteria dashboard hari ini.")
+        print("Belum ada emiten yang memenuhi kriteria breakout hari ini.")
 
 if __name__ == "__main__":
     asyncio.run(run_screener())
