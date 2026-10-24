@@ -4,9 +4,9 @@ import pandas as pd
 import yfinance as yf
 from telegram import Bot
 
-# Token & Chat ID Telegram Anda
-TELEGRAM_BOT_TOKEN = "8986896789:AAHls6ixUUTFSOaotL4ATnKoYVt04yIW0"
-TELEGRAM_CHAT_ID = "1768576462"
+# Mengambil Token & Chat ID secara aman dari GitHub Secrets (Environment Variables)
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
 # Daftar emiten IDX yang ingin dipindai
 WATCHLIST = [
@@ -71,6 +71,10 @@ def check_stock_signal(ticker_symbol):
     return None
 
 async def run_screener():
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        print("Error: TELEGRAM_BOT_TOKEN atau TELEGRAM_CHAT_ID belum diset di environment variables.")
+        return
+
     bot = Bot(token=TELEGRAM_BOT_TOKEN)
     signals = []
 
