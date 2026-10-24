@@ -8,7 +8,7 @@ from telegram import Bot
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
-# Watchlist Komprehensif Sektor Non-Bluechip Teraktif & High Volatility (PRIME & TECH sudah dibuang)
+# Watchlist Komprehensif Sektor Non-Bluechip Teraktif & High Volatility
 WATCHLIST = [
     # --- 1. PROPERTI & REAL ESTATE ---
     "PANI.JK", "BSDE.JK", "CTRA.JK", "PWON.JK", "SMRA.JK", "ASRI.JK", "LPKR.JK", 
@@ -104,11 +104,15 @@ def calculate_snd_and_fib(df):
 def check_stock_signal(ticker_symbol):
     try:
         tk = yf.Ticker(ticker_symbol)
-        df = tk.history(period="60d", interval="1d")
+        df = tk.history(period="60d", interval="1d", progress=False)
         if df is None or df.empty or len(df) < 30:
             return None
 
-        info = tk.info or {}
+        try:
+            info = tk.info or {}
+        except Exception:
+            info = {}
+
         company_name = info.get('longName', ticker_symbol.replace('.JK', ''))
 
         df['EMA20'] = df['Close'].ewm(span=20, adjust=False).mean()
@@ -241,9 +245,12 @@ async def run_screener():
 
     print("Memindai emiten Mode Ganda (Bullish & Bearish + SnD + Fib)...")
     for ticker in WATCHLIST:
-        res = check_stock_signal(ticker)
-        if res:
-            signals.append(res)
+        try:
+            res = check_stock_signal(ticker)
+            if res:
+                signals.append(res)
+        except Exception as e:
+            print(f"Gagal memproses emiten {ticker}: {e}")
         await asyncio.sleep(0.3)
 
     if signals:
