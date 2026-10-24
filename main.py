@@ -4,21 +4,21 @@ import pandas as pd
 import yfinance as yf
 from telegram import Bot
 
-# Token & Chat ID Telegram Anda
-TELEGRAM_BOT_TOKEN = "8694938627:AAHFF-uRBgSZIWFHK941fMMKglZIeZtAeVw"
-TELEGRAM_CHAT_ID = "1768576462"
+# Mengambil Token & Chat ID secara aman dari GitHub Secrets
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
-# Watchlist Komprehensif Sektor Non-Bluechip Teraktif & High Volatility
+# Watchlist Komprehensif Sektor Non-Bluechip Teraktif & High Volatility (PRIME & TECH sudah dibuang)
 WATCHLIST = [
     # --- 1. PROPERTI & REAL ESTATE ---
     "PANI.JK", "BSDE.JK", "CTRA.JK", "PWON.JK", "SMRA.JK", "ASRI.JK", "LPKR.JK", 
     "DILD.JK", "BEST.JK", "DUTI.JK", "BKSL.JK", "KIJA.JK", "MMLP.JK", "GWSA.JK",
 
     # --- 2. KESEHATAN (Health) ---
-    "SILO.JK", "HEAL.JK", "MIKA.JK", "KAEF.JK", "INAF.JK", "DVLA.JK", "PEHA.JK", "RSGK.JK", "PRIME.JK",
+    "SILO.JK", "HEAL.JK", "MIKA.JK", "KAEF.JK", "INAF.JK", "DVLA.JK", "PEHA.JK", "RSGK.JK",
     
     # --- 3. TEKNOLOGI, DIGITAL & KABEL ---
-    "GOTO.JK", "BUKA.JK", "EMTK.JK", "MTDL.JK", "BELI.JK", "TECH.JK", "SCMA.JK", 
+    "GOTO.JK", "BUKA.JK", "EMTK.JK", "MTDL.JK", "BELI.JK", "SCMA.JK", 
     "FREN.JK", "EXCL.JK", "ISAT.JK", "WIFI.JK", "AXIO.JK",
     
     # --- 4. BAHAN BAKU / BASIC MATERIALS ---
@@ -89,7 +89,6 @@ def calculate_snd_and_fib(df):
     if price_range == 0:
         return None
     
-    # Fibonacci Extensions (Harmonik & Target TP)
     fib_1272 = swing_high + (price_range * 0.272)
     fib_1618 = swing_high + (price_range * 0.618) # Area TP Utama
     
@@ -106,10 +105,10 @@ def check_stock_signal(ticker_symbol):
     try:
         tk = yf.Ticker(ticker_symbol)
         df = tk.history(period="60d", interval="1d")
-        if len(df) < 30:
+        if df is None or df.empty or len(df) < 30:
             return None
 
-        info = tk.info
+        info = tk.info or {}
         company_name = info.get('longName', ticker_symbol.replace('.JK', ''))
 
         df['EMA20'] = df['Close'].ewm(span=20, adjust=False).mean()
@@ -137,18 +136,16 @@ def check_stock_signal(ticker_symbol):
         volume_shares = float(latest['Volume'])
         vol_ma20 = float(latest['Vol_MA20'])
         value = close_price * volume_shares
-        value_miliar = value / 1e9  # Dalam Miliar Rp
+        value_miliar = value / 1e9  
         
         price_change = close_price - prev_close
         price_change_pct = (price_change / prev_close) * 100
 
-        # Data Fundamental
         pe = info.get('trailingPE', 'N/A')
         pbv = info.get('priceToBook', 'N/A')
         roe = info.get('returnOnEquity')
-        roe_str = f"{roe*100:.2f}%" if roe else "N/A"
+        roe_str = f"{roe*100:.2f}%" if roe is not None else "N/A"
 
-        # Hitung SnD & Fibonacci Otomatis
         snd_fib = calculate_snd_and_fib(df)
         if not snd_fib:
             return None
@@ -163,9 +160,7 @@ def check_stock_signal(ticker_symbol):
         vol_ratio = volume_shares / vol_ma20 if vol_ma20 > 0 else 1.0
         vol_surge_pct = int((vol_ratio - 1) * 100) if vol_ratio > 1 else 0
 
-        # Syarat Dasar Likuiditas & Harga Aman
         cond_base = (value >= 1_000_000_000) and (close_price <= 3000) and (volume_shares > (vol_ma20 * 1.2))
-
         if not cond_base:
             return None
 
@@ -173,11 +168,11 @@ def check_stock_signal(ticker_symbol):
         macd_hist = float(latest['MACD_Hist'])
         ticker_clean = ticker_symbol.replace(".JK", "")
 
-        # --- LOGIKA 1: BULLISH / POTENSI ENTRY ---
+        # --- LOGIKA 1: BULLISH ---
         cond_bull_change = 1.0 <= price_change_pct < 15.0
         cond_bull_rsi = rsi_val > 50
         cond_bull_macd = macd_hist > 0
-        cond_bull_breakout = close_price >= (resistance_zone * 0.90)  # Radius 10% dari Resistance/Supply
+        cond_bull_breakout = close_price >= (resistance_zone * 0.90)
 
         if cond_bull_change and cond_bull_rsi and cond_bull_macd and cond_bull_breakout:
             entry_low = int(close_price)
@@ -207,11 +202,11 @@ def check_stock_signal(ticker_symbol):
                 "roe": roe_str,
             }
 
-        # --- LOGIKA 2: BEARISH / WASPADA DISTRIBUSI (JANGAN ENTRY) ---
+        # --- LOGIKA 2: BEARISH ---
         cond_bear_change = -15.0 < price_change_pct <= -1.0
         cond_bear_rsi = rsi_val < 50
         cond_bear_macd = macd_hist < 0
-        cond_bear_breakdown = close_price <= (support_bawah * 1.05)  # Radius 5% dekat/jebol Support
+        cond_bear_breakdown = close_price <= (support_bawah * 1.05)
 
         if cond_bear_change and cond_bear_rsi and cond_bear_macd and cond_bear_breakdown:
             return {
@@ -233,10 +228,14 @@ def check_stock_signal(ticker_symbol):
             }
 
     except Exception as e:
-        pass
+        print(f"Skipping {ticker_symbol} due to error: {e}")
     return None
 
 async def run_screener():
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        print("Error: Token atau Chat ID Telegram belum diset di environment variables.")
+        return
+
     bot = Bot(token=TELEGRAM_BOT_TOKEN)
     signals = []
 
@@ -248,7 +247,6 @@ async def run_screener():
         await asyncio.sleep(0.3)
 
     if signals:
-        # Urutkan berdasarkan volume surge terbesar
         signals = sorted(signals, key=lambda x: x['vol_ratio_raw'], reverse=True)
 
         for i, s in enumerate(signals, 1):
