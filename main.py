@@ -78,6 +78,30 @@ WATCHLIST = [
     "TRUE.JK", "HILL.JK", "NSSS.JK", "MOLI.JK", "JGLE.JK", "MPRO.JK", "AMMN.JK", "SAGE.JK"
 ]
 
+def calculate_snd_and_fib(df):
+    """Menghitung zona Supply & Demand serta Target Fibonacci Extension"""
+    if len(df) < 20:
+        return None
+    recent_df = df.tail(20)
+    swing_high = recent_df['High'].max()
+    swing_low = recent_df['Low'].min()
+    price_range = swing_high - swing_low
+    if price_range == 0:
+        return None
+    
+    # Fibonacci Extensions (Harmonik & Target TP)
+    fib_1272 = swing_high + (price_range * 0.272)
+    fib_1618 = swing_high + (price_range * 0.618) # Area TP Utama
+    
+    return {
+        "swing_high": int(swing_high),
+        "swing_low": int(swing_low),
+        "fib_1272": int(fib_1272),
+        "fib_1618": int(fib_1618),
+        "demand_zone": int(swing_low),
+        "supply_zone": int(swing_high)
+    }
+
 def check_stock_signal(ticker_symbol):
     try:
         tk = yf.Ticker(ticker_symbol)
@@ -124,10 +148,17 @@ def check_stock_signal(ticker_symbol):
         roe = info.get('returnOnEquity')
         roe_str = f"{roe*100:.2f}%" if roe else "N/A"
 
-        # Support & Resistance Zone
-        support_zone = round(df['Low'].tail(5).min(), 0)
+        # Hitung SnD & Fibonacci Otomatis
+        snd_fib = calculate_snd_and_fib(df)
+        if not snd_fib:
+            return None
+
+        support_zone = snd_fib["demand_zone"]
+        resistance_zone = snd_fib["supply_zone"]
+        fib_tp1 = snd_fib["fib_1272"]
+        fib_tp2 = snd_fib["fib_1618"]
+
         support_bawah = round(df['Low'].tail(20).min(), 0)
-        resistance_zone = round(df['High'].tail(20).max(), 0)
 
         vol_ratio = volume_shares / vol_ma20 if vol_ma20 > 0 else 1.0
         vol_surge_pct = int((vol_ratio - 1) * 100) if vol_ratio > 1 else 0
@@ -146,12 +177,11 @@ def check_stock_signal(ticker_symbol):
         cond_bull_change = 1.0 <= price_change_pct < 15.0
         cond_bull_rsi = rsi_val > 50
         cond_bull_macd = macd_hist > 0
-        cond_bull_breakout = close_price >= (resistance_zone * 0.90)  # Radius 10% dari Resistance
+        cond_bull_breakout = close_price >= (resistance_zone * 0.90)  # Radius 10% dari Resistance/Supply
 
         if cond_bull_change and cond_bull_rsi and cond_bull_macd and cond_bull_breakout:
             entry_low = int(close_price)
             stop_loss = int(round(support_zone * 0.98, 0))
-            tp1 = int(resistance_zone) if resistance_zone > entry_low else int(round(close_price * 1.05, 0))
             potensi_ara = "TINGGI" if (vol_ratio >= 3.0 and price_change_pct >= 10.0) else "MENENGAH"
 
             return {
@@ -168,9 +198,10 @@ def check_stock_signal(ticker_symbol):
                 "potensi_ara": potensi_ara,
                 "support": support_zone,
                 "resist": resistance_zone,
+                "fib_tp1": fib_tp1,
+                "fib_tp2": fib_tp2,
                 "entry": entry_low,
                 "stop_loss": stop_loss,
-                "tp1": tp1,
                 "pe": f"{pe:.2f}" if isinstance(pe, (int, float)) else pe,
                 "pbv": f"{pbv:.2f}" if isinstance(pbv, (int, float)) else pbv,
                 "roe": roe_str,
@@ -209,7 +240,7 @@ async def run_screener():
     bot = Bot(token=TELEGRAM_BOT_TOKEN)
     signals = []
 
-    print("Memindai emiten Mode Ganda (Bullish & Bearish)...")
+    print("Memindai emiten Mode Ganda (Bullish & Bearish + SnD + Fib)...")
     for ticker in WATCHLIST:
         res = check_stock_signal(ticker)
         if res:
@@ -224,25 +255,26 @@ async def run_screener():
             if s['signal_type'] == "BULLISH":
                 message = (
                     f"🟢 <b>#{i} {s['ticker']} — SINYAL ENTRY (BULLISH)</b>\n"
-                    f"✅ <i>Breakout & Akumulasi Whale Terkonfirmasi</i>\n\n"
-                    f"<b>KUAT 🔼 (Analisis Tren & Whale)</b>\n"
+                    f"✅ <i>Breakout SnD & Target Fibonacci Terkonfirmasi</i>\n\n"
+                    f"<b>KUAT 🔼 (Analisis Tren & SnD/Fib)</b>\n"
                     f"├── Harga Live: Rp {s['price']:,.0f} ({s['change_pct']:+.2f}%)\n"
-                    f"├── Zona Entry (Fib/SnD): <b>Rp {s['entry']:,.0f}</b>\n"
-                    f"├── Est. TP Besok: <b>Rp {s['tp1']:,.0f}</b>\n"
-                    f"├── Est. SL Besok: <b>Rp {s['stop_loss']:,.0f}</b>\n"
+                    f"├── Zona Entry (SnD): <b>Rp {s['entry']:,.0f}</b>\n"
+                    f"├── Target TP1 (Fib 1.272): <b>Rp {s['fib_tp1']:,.0f}</b>\n"
+                    f"├── AREA TP (Fib 1.618): <b>Rp {s['fib_tp2']:,.0f}</b>\n"
+                    f"├── Est. Stop Loss: <b>Rp {s['stop_loss']:,.0f}</b>\n"
                     f"├── Likuiditas: Rp {s['value_miliar']:.2f} M/hari\n"
                     f"├── RSI-14: {s['rsi']} 🟢 Momentum Naik\n"
                     f"├── Volume Surge: {s['vol_surge']} ⬆️ ({s['vol_ratio']}x MA20)\n"
-                    f"├── Potensi ARA Besok: <b>{s['potensi_ara']}</b>\n"
+                    f"├── Potensi ARA: <b>{s['potensi_ara']}</b>\n"
                     f"├── Demand Zone: Rp {s['support']:,.0f}\n"
                     f"└── Supply Zone: Rp {s['resist']:,.0f}\n\n"
                     f"💎 <b>Valuasi:</b> P/E: {s['pe']} | P/BV: {s['pbv']}x | ROE: {s['roe']}\n\n"
-                    f"<blockquote>🎯 <b>REKOMENDASI: LAYAK ENTRY</b> (Akumulasi kuat). Tetap disiplin Stop Loss!</blockquote>"
+                    f"<blockquote>🎯 <b>REKOMENDASI: LAYAK ENTRY</b> (Breakout SnD Valid). Disiplin SL!</blockquote>"
                 )
             else:
                 message = (
                     f"🔴 <b>#{i} {s['ticker']} — WARNING! WASPADA (BEARISH)</b>\n"
-                    f"⚠️ <i>Distribusi Whale / Breakdown Support</i>\n\n"
+                    f"⚠️ <i>Distribusi / Breakdown Support SnD</i>\n\n"
                     f"<b>TEKANAN JUAL TINGGI 🔽</b>\n"
                     f"├── Harga Live: Rp {s['price']:,.0f} ({s['change_pct']:+.2f}%)\n"
                     f"├── Likuiditas Buang Barang: Rp {s['value_miliar']:.2f} M/hari\n"
@@ -251,13 +283,13 @@ async def run_screener():
                     f"├── Support Kritis Terancam: Rp {s['support_bawah']:,.0f}\n"
                     f"└── Supply Zone Atas: Rp {s['resist']:,.0f}\n\n"
                     f"💎 <b>Valuasi:</b> P/E: {s['pe']} | P/BV: {s['pbv']}x | ROE: {s['roe']}\n\n"
-                    f"<blockquote>🚫 <b>REKOMENDASI: JANGAN ENTRY!</b> (Risiko koreksi lanjutan / jebol support).</blockquote>"
+                    f"<blockquote>🚫 <b>REKOMENDASI: JANGAN ENTRY!</b> (Risiko koreksi lanjutan).</blockquote>"
                 )
 
             await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message, parse_mode="HTML", disable_web_page_preview=True)
             await asyncio.sleep(1)
             
-        print("Alert Mode Ganda Berhasil dikirim ke Telegram!")
+        print("Alert SnD & Fibonacci Berhasil dikirim ke Telegram!")
     else:
         print("Belum ada emiten yang memenuhi kriteria hari ini.")
 
