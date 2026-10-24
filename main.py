@@ -164,7 +164,9 @@ def check_stock_signal(ticker_symbol):
         vol_ratio = volume_shares / vol_ma20 if vol_ma20 > 0 else 1.0
         vol_surge_pct = int((vol_ratio - 1) * 100) if vol_ratio > 1 else 0
 
-        cond_base = (value >= 1_000_000_000) and (close_price <= 3000) and (volume_shares > (vol_ma20 * 1.2))
+        # ---> FILTER DILONGGARKAN DI SINI <---
+        # Nilai transaksi minimal 500 Juta (sebelumnya 1 Miliar), Harga max 3500, Volume minimal di atas MA20 (1.0x)
+        cond_base = (value >= 500_000_000) and (close_price <= 3500) and (volume_shares >= vol_ma20 * 1.0)
         if not cond_base:
             return None
 
@@ -172,16 +174,16 @@ def check_stock_signal(ticker_symbol):
         macd_hist = float(latest['MACD_Hist'])
         ticker_clean = ticker_symbol.replace(".JK", "")
 
-        # --- LOGIKA 1: BULLISH ---
-        cond_bull_change = 1.0 <= price_change_pct < 15.0
-        cond_bull_rsi = rsi_val > 50
-        cond_bull_macd = macd_hist > 0
-        cond_bull_breakout = close_price >= (resistance_zone * 0.90)
+        # --- LOGIKA 1: BULLISH (DILONGGARKAN) ---
+        # Perubahan harga mulai dari 0% ke atas (menghijau tipis pun masuk), RSI > 45
+        cond_bull_change = 0.0 <= price_change_pct < 20.0
+        cond_bull_rsi = rsi_val > 45
+        cond_bull_breakout = close_price >= (resistance_zone * 0.85) # Radius diperluas dari 90% ke 85%
 
-        if cond_bull_change and cond_bull_rsi and cond_bull_macd and cond_bull_breakout:
+        if cond_bull_change and cond_bull_rsi and cond_bull_breakout:
             entry_low = int(close_price)
-            stop_loss = int(round(support_zone * 0.98, 0))
-            potensi_ara = "TINGGI" if (vol_ratio >= 3.0 and price_change_pct >= 10.0) else "MENENGAH"
+            stop_loss = int(round(support_zone * 0.97, 0))
+            potensi_ara = "TINGGI" if (vol_ratio >= 2.5 and price_change_pct >= 8.0) else "MENENGAH"
 
             return {
                 "signal_type": "BULLISH",
@@ -207,12 +209,11 @@ def check_stock_signal(ticker_symbol):
             }
 
         # --- LOGIKA 2: BEARISH ---
-        cond_bear_change = -15.0 < price_change_pct <= -1.0
-        cond_bear_rsi = rsi_val < 50
-        cond_bear_macd = macd_hist < 0
-        cond_bear_breakdown = close_price <= (support_bawah * 1.05)
+        cond_bear_change = -15.0 < price_change_pct <= -0.5
+        cond_bear_rsi = rsi_val < 55
+        cond_bear_breakdown = close_price <= (support_bawah * 1.08)
 
-        if cond_bear_change and cond_bear_rsi and cond_bear_macd and cond_bear_breakdown:
+        if cond_bear_change and cond_bear_rsi and cond_bear_breakdown:
             return {
                 "signal_type": "BEARISH",
                 "ticker": ticker_clean,
@@ -243,7 +244,7 @@ async def run_screener():
     bot = Bot(token=TELEGRAM_BOT_TOKEN)
     signals = []
 
-    print("Memindai emiten Mode Ganda (Bullish & Bearish + SnD + Fib)...")
+    print("Memindai emiten Mode Ganda (Filter Lebih Longgar)...")
     for ticker in WATCHLIST:
         try:
             res = check_stock_signal(ticker)
@@ -260,7 +261,7 @@ async def run_screener():
             if s['signal_type'] == "BULLISH":
                 message = (
                     f"🟢 <b>#{i} {s['ticker']} — SINYAL ENTRY (BULLISH)</b>\n"
-                    f"✅ <i>Breakout SnD & Target Fibonacci Terkonfirmasi</i>\n\n"
+                    f"✅ <i>Akumulasi & Potensi Breakout SnD Terdeteksi</i>\n\n"
                     f"<b>KUAT 🔼 (Analisis Tren & SnD/Fib)</b>\n"
                     f"├── Harga Live: Rp {s['price']:,.0f} ({s['change_pct']:+.2f}%)\n"
                     f"├── Zona Entry (SnD): <b>Rp {s['entry']:,.0f}</b>\n"
@@ -268,35 +269,35 @@ async def run_screener():
                     f"├── AREA TP (Fib 1.618): <b>Rp {s['fib_tp2']:,.0f}</b>\n"
                     f"├── Est. Stop Loss: <b>Rp {s['stop_loss']:,.0f}</b>\n"
                     f"├── Likuiditas: Rp {s['value_miliar']:.2f} M/hari\n"
-                    f"├── RSI-14: {s['rsi']} 🟢 Momentum Naik\n"
+                    f"├── RSI-14: {s['rsi']} 🟢 Momentum Positif\n"
                     f"├── Volume Surge: {s['vol_surge']} ⬆️ ({s['vol_ratio']}x MA20)\n"
                     f"├── Potensi ARA: <b>{s['potensi_ara']}</b>\n"
                     f"├── Demand Zone: Rp {s['support']:,.0f}\n"
                     f"└── Supply Zone: Rp {s['resist']:,.0f}\n\n"
                     f"💎 <b>Valuasi:</b> P/E: {s['pe']} | P/BV: {s['pbv']}x | ROE: {s['roe']}\n\n"
-                    f"<blockquote>🎯 <b>REKOMENDASI: LAYAK ENTRY</b> (Breakout SnD Valid). Disiplin SL!</blockquote>"
+                    f"<blockquote>🎯 <b>REKOMENDASI: LAYAK DIPANTAU/ENTRY</b> (Sinyal Longgar Aktif). Disiplin SL!</blockquote>"
                 )
             else:
                 message = (
                     f"🔴 <b>#{i} {s['ticker']} — WARNING! WASPADA (BEARISH)</b>\n"
-                    f"⚠️ <i>Distribusi / Breakdown Support SnD</i>\n\n"
-                    f"<b>TEKANAN JUAL TINGGI 🔽</b>\n"
+                    f"⚠️ <i>Tekanan Jual / Mendekati Support Kritis</i>\n\n"
+                    f"<b>TEKANAN JUAL 🔽</b>\n"
                     f"├── Harga Live: Rp {s['price']:,.0f} ({s['change_pct']:+.2f}%)\n"
-                    f"├── Likuiditas Buang Barang: Rp {s['value_miliar']:.2f} M/hari\n"
-                    f"├── RSI-14: {s['rsi']} 🔴 Momentum Lemah/Turun\n"
-                    f"├── Volume Dump: {s['vol_surge']} ⬇️ ({s['vol_ratio']}x MA20)\n"
-                    f"├── Support Kritis Terancam: Rp {s['support_bawah']:,.0f}\n"
+                    f"├── Likuiditas: Rp {s['value_miliar']:.2f} M/hari\n"
+                    f"├── RSI-14: {s['rsi']} 🔴 Momentum Melemah\n"
+                    f"├── Volume: {s['vol_surge']} ({s['vol_ratio']}x MA20)\n"
+                    f"├── Support Kritis: Rp {s['support_bawah']:,.0f}\n"
                     f"└── Supply Zone Atas: Rp {s['resist']:,.0f}\n\n"
                     f"💎 <b>Valuasi:</b> P/E: {s['pe']} | P/BV: {s['pbv']}x | ROE: {s['roe']}\n\n"
-                    f"<blockquote>🚫 <b>REKOMENDASI: JANGAN ENTRY!</b> (Risiko koreksi lanjutan).</blockquote>"
+                    f"<blockquote>🚫 <b>REKOMENDASI: HATI-HATI / JANGAN ENTRY!</b></blockquote>"
                 )
 
             await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message, parse_mode="HTML", disable_web_page_preview=True)
             await asyncio.sleep(1)
             
-        print("Alert SnD & Fibonacci Berhasil dikirim ke Telegram!")
+        print("Alert Sektor & SnD Berhasil dikirim ke Telegram!")
     else:
-        print("Belum ada emiten yang memenuhi kriteria hari ini.")
+        print("Belum ada emiten yang memenuhi kriteria longgar hari ini.")
 
 if __name__ == "__main__":
     asyncio.run(run_screener())
