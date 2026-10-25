@@ -8,7 +8,7 @@ from telegram import Bot
 TELEGRAM_BOT_TOKEN = "8694938627:AAHFF-uRBgSZIWFHK941fMMKglZIeZtAeVw"
 TELEGRAM_CHAT_ID = "1768576462"
 
-# Watchlist Komprehensif Sektor Non-Bluechip Teraktif & High Volatility (PRIME & TECH telah dihapus)
+# Watchlist Komprehensif Sektor Non-Bluechip Teraktif & High Volatility (PRIME, TECH & FREN telah dihapus)
 WATCHLIST = [
     # --- 1. PROPERTI & REAL ESTATE ---
     "PANI.JK", "BSDE.JK", "CTRA.JK", "PWON.JK", "SMRA.JK", "ASRI.JK", "LPKR.JK", 
@@ -19,7 +19,7 @@ WATCHLIST = [
     
     # --- 3. TEKNOLOGI, DIGITAL & KABEL ---
     "GOTO.JK", "BUKA.JK", "EMTK.JK", "MTDL.JK", "BELI.JK", "SCMA.JK", 
-    "FREN.JK", "EXCL.JK", "ISAT.JK", "WIFI.JK", "AXIO.JK",
+    "EXCL.JK", "ISAT.JK", "WIFI.JK", "AXIO.JK",
     
     # --- 4. BAHAN BAKU / BASIC MATERIALS ---
     "BRPT.JK", "TPIA.JK", "TKIM.JK", "INKP.JK", "IMPC.JK", "ESSA.JK", "NCKL.JK", 
