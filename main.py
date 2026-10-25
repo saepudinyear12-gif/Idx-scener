@@ -8,17 +8,17 @@ from telegram import Bot
 TELEGRAM_BOT_TOKEN = "8694938627:AAHFF-uRBgSZIWFHK941fMMKglZIeZtAeVw"
 TELEGRAM_CHAT_ID = "1768576462"
 
-# Watchlist Komprehensif Sektor Non-Bluechip Teraktif & High Volatility
+# Watchlist Komprehensif Sektor Non-Bluechip Teraktif & High Volatility (PRIME & TECH telah dihapus)
 WATCHLIST = [
     # --- 1. PROPERTI & REAL ESTATE ---
     "PANI.JK", "BSDE.JK", "CTRA.JK", "PWON.JK", "SMRA.JK", "ASRI.JK", "LPKR.JK", 
     "DILD.JK", "BEST.JK", "DUTI.JK", "BKSL.JK", "KIJA.JK", "MMLP.JK", "GWSA.JK",
 
     # --- 2. KESEHATAN (Health) ---
-    "SILO.JK", "HEAL.JK", "MIKA.JK", "KAEF.JK", "INAF.JK", "DVLA.JK", "PEHA.JK", "RSGK.JK", "PRIME.JK",
+    "SILO.JK", "HEAL.JK", "MIKA.JK", "KAEF.JK", "INAF.JK", "DVLA.JK", "PEHA.JK", "RSGK.JK",
     
     # --- 3. TEKNOLOGI, DIGITAL & KABEL ---
-    "GOTO.JK", "BUKA.JK", "EMTK.JK", "MTDL.JK", "BELI.JK", "TECH.JK", "SCMA.JK", 
+    "GOTO.JK", "BUKA.JK", "EMTK.JK", "MTDL.JK", "BELI.JK", "SCMA.JK", 
     "FREN.JK", "EXCL.JK", "ISAT.JK", "WIFI.JK", "AXIO.JK",
     
     # --- 4. BAHAN BAKU / BASIC MATERIALS ---
