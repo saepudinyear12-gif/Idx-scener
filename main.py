@@ -144,13 +144,13 @@ def check_stock_signal(ticker_symbol):
         # Rasio Lonjakan Volume vs Rata-rata 20 Hari
         vol_ratio = volume_shares / vol_ma20 if vol_ma20 > 0 else 1.0
 
-        # --- KRITERIA UTAMA ---
-        cond_vol = volume_shares > (vol_ma20 * 1.5)
-        cond_change = price_change_pct >= 3.0
-        cond_rsi = float(latest['RSI14']) > 55 and float(latest['RSI14']) > float(prev['RSI14'])
-        cond_macd = float(latest['MACD_Hist']) > 0
-        cond_val = value >= 1_000_000_000  # Min Transaksi Rp 1 Miliar
-        cond_price = close_price <= 3000   # Maksimal Harga Saham Rp 3.000
+        # --- KRITERIA UTAMA (DILONGGARKAN AGAR LEBIH SENSITIF) ---
+        cond_vol = volume_shares > (vol_ma20 * 1.2)        # Volume > 1.2x MA20 (sebelumnya 1.5x)
+        cond_change = price_change_pct >= 2.0              # Kenaikan >= 2.0% (sebelumnya 3.0%)
+        cond_rsi = float(latest['RSI14']) > 50 and float(latest['RSI14']) > float(prev['RSI14']) # RSI > 50 & naik
+        cond_macd = float(latest['MACD_Hist']) > 0         # MACD Histogram positif
+        cond_val = value >= 500_000_000                    # Min Transaksi Rp 500 Juta (sebelumnya 1 Miliar)
+        cond_price = close_price <= 3000                   # Maksimal Harga Saham Rp 3.000
 
         # --- TAMBAHAN DETEKSI POTENSI ARA (SUPER MOMENTUM) ---
         is_potential_ara = (volume_shares > (vol_ma20 * 3.0)) and (price_change_pct >= 10.0)
