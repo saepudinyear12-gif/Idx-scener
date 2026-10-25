@@ -1,5 +1,6 @@
 import os
 import asyncio
+import html
 import pandas as pd
 import yfinance as yf
 from telegram import Bot
@@ -8,7 +9,8 @@ from telegram import Bot
 TELEGRAM_BOT_TOKEN = "8694938627:AAHFF-uRBgSZIWFHK941fMMKglZIeZtAeVw"
 TELEGRAM_CHAT_ID = "1768576462"
 
-# Watchlist Komprehensif Sektor Non-Bluechip Teraktif & High Volatility (PRIME, TECH & FREN telah dihapus)
+# Watchlist Komprehensif Sektor Non-Bluechip Teraktif & High Volatility 
+# (PRIME, TECH, & FREN sudah dibersihkan)
 WATCHLIST = [
     # --- 1. PROPERTI & REAL ESTATE ---
     "PANI.JK", "BSDE.JK", "CTRA.JK", "PWON.JK", "SMRA.JK", "ASRI.JK", "LPKR.JK", 
@@ -142,7 +144,7 @@ def check_stock_signal(ticker_symbol):
         # Rasio Lonjakan Volume vs Rata-rata 20 Hari
         vol_ratio = volume_shares / vol_ma20 if vol_ma20 > 0 else 1.0
 
-        # --- KRITERIA UTAMA (TETAP LENGKAP) ---
+        # --- KRITERIA UTAMA ---
         cond_vol = volume_shares > (vol_ma20 * 1.5)
         cond_change = price_change_pct >= 3.0
         cond_rsi = float(latest['RSI14']) > 55 and float(latest['RSI14']) > float(prev['RSI14'])
@@ -199,8 +201,11 @@ async def run_screener():
 
     if signals:
         for s in signals:
+            # Mengamankan nama perusahaan dari karakter khusus HTML (seperti '&')
+            safe_company_name = html.escape(s['company_name'])
+            
             message = (
-                f"🏢 <b>Emiten:</b> {s['company_name']} (${s['ticker']})\n\n"
+                f"🏢 <b>Emiten:</b> {safe_company_name} (${s['ticker']})\n\n"
                 f"📈 <b>1. SNAPSHOT HARGA & SnD</b>\n"
                 f"├── Harga Live: Rp {s['price']:,.0f}\n"
                 f"├── Perubahan: {s['change']:+,.0f} ({s['change_pct']:+.2f}%)\n"
@@ -224,7 +229,10 @@ async def run_screener():
                 f"└── {s['rating_text']}\n\n"
                 f"<i>Disclaimer: Live market data & psikologi tren. DYOR!</i>"
             )
-            await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message, parse_mode="HTML", disable_web_page_preview=True)
+            try:
+                await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message, parse_mode="HTML", disable_web_page_preview=True)
+            except Exception as err:
+                print(f"Gagal mengirim pesan Telegram untuk {s['ticker']}: {err}")
             await asyncio.sleep(1)
             
         print("Alert SnD Berhasil dikirim ke Telegram!")
