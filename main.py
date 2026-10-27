@@ -1,6 +1,5 @@
 import os
 import asyncio
-import html
 import pandas as pd
 import yfinance as yf
 from telegram import Bot
@@ -88,8 +87,6 @@ def check_stock_signal(ticker_symbol):
 
         info = tk.info
         company_name = info.get('longName', ticker_symbol.replace('.JK', ''))
-        # Bersihkan nama perusahaan dari karakter HTML khusus agar aman
-        company_name = html.escape(str(company_name))
 
         df['EMA20'] = df['Close'].ewm(span=20, adjust=False).mean()
         df['Vol_MA20'] = df['Volume'].rolling(window=20).mean()
@@ -196,38 +193,37 @@ async def run_screener():
     if signals:
         for s in signals:
             message = (
-                f"🏢 <b>Emiten:</b> {s['company_name']} (${s['ticker']})\n\n"
-                f"📈 <b>1. SNAPSHOT HARGA</b>\n"
-                f"├── Harga Live: Rp {s['price']:,.0f}\n"
-                f"├── Perubahan: {s['change']:+,.0f} ({s['change_pct']:+.2f}%)\n"
-                f"├── Volume: {s['volume_lots']:,} lot ({s['vol_ratio']:.1f}x MA20)\n"
-                f"└── Market Cap: Rp {s['market_cap']:.2f} T\n\n"
-                f"💎 <b>2. VALUASI & FUNDAMENTAL</b>\n"
-                f"├── P/E: {s['pe']} | P/BV: {s['pbv']}x\n"
-                f"└── ROE: {s['roe']} | DER: {s['der']}x\n\n"
-                f"🐳 <b>3. BANDARMOLOGY</b>\n"
-                f"🟢 <b>Akumulasi Bandar (Markup Phase):</b>\n"
+                f"Emiten: {s['company_name']} (${s['ticker']})\n\n"
+                f"1. SNAPSHOT HARGA\n"
+                f"--- Harga Live: Rp {s['price']:,.0f}\n"
+                f"--- Perubahan: {s['change']:+,.0f} ({s['change_pct']:+.2f}%)\n"
+                f"--- Volume: {s['volume_lots']:,} lot ({s['vol_ratio']:.1f}x MA20)\n"
+                f"--- Market Cap: Rp {s['market_cap']:.2f} T\n\n"
+                f"2. VALUASI & FUNDAMENTAL\n"
+                f"--- P/E: {s['pe']} | P/BV: {s['pbv']}x\n"
+                f"--- ROE: {s['roe']} | DER: {s['der']}x\n\n"
+                f"3. BANDARMOLOGY\n"
+                f"--- Akumulasi Bandar (Markup Phase):\n"
                 f"Lonjakan volume {s['vol_ratio']:.1f}x dari rata-rata menandakan dorongan akumulasi Big Money masif.\n\n"
-                f"🧠 <b>4. ANALISIS</b>\n"
-                f"• <b>Tren:</b> 🚀 <b>Strong Bullish / Momentum Breakout</b>\n"
-                f"• <b>Katalis:</b> Dorongan buyer tinggi ({s['change_pct']:+.2f}%).\n"
-                f"• <b>Struktur:</b> Harga menembus resistance dengan volume tebal.\n"
-                f"• <b>Risiko Breakdown:</b> Jika support {s['support']:,.0f} jebol, potensi lanjut turun ke area {s['risk_area']:,.0f}.\n\n"
-                f"🎯 <b>5. TRADING PLAN</b>\n"
-                f"• <b>Entry:</b> {s['entry_low']:,.0f} – {s['entry_high']:,.0f}\n"
-                f"• <b>Stop Loss:</b> {s['stop_loss']:,.0f}\n"
-                f"• <b>Take Profit 1:</b> {s['tp1']:,.0f}\n"
-                f"• <b>Take Profit 2:</b> {s['tp2']:,.0f}\n\n"
-                f"⭐ <b>6. RATING</b>\n"
-                f"└── 🔥 <b>Strong Bullish (High Momentum Buy)</b>\n\n"
-                f"<i>Disclaimer: Live market data & psikologi tren. DYOR!</i>"
+                f"4. ANALISIS\n"
+                f"- Tren: Strong Bullish / Momentum Breakout\n"
+                f"- Katalis: Dorongan buyer tinggi ({s['change_pct']:+.2f}%).\n"
+                f"- Struktur: Harga menembus resistance dengan volume tebal.\n"
+                f"- Risiko Breakdown: Jika support {s['support']:,.0f} jebol, potensi lanjut turun ke area {s['risk_area']:,.0f}.\n\n"
+                f"5. TRADING PLAN\n"
+                f"- Entry: {s['entry_low']:,.0f} – {s['entry_high']:,.0f}\n"
+                f"- Stop Loss: {s['stop_loss']:,.0f}\n"
+                f"- Take Profit 1: {s['tp1']:,.0f}\n"
+                f"- Take Profit 2: {s['tp2']:,.0f}\n\n"
+                f"6. RATING\n"
+                f"--- Strong Bullish (High Momentum Buy)\n\n"
+                f"Disclaimer: Live market data & psikologi tren. DYOR!"
             )
+            
             try:
-                await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message, parse_mode="HTML", disable_web_page_preview=True)
+                await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message, disable_web_page_preview=True)
             except Exception as e:
-                # Jika masih gagal format HTML, kirim sebagai teks biasa agar bot tidak crash
-                plain_message = message.replace("<b>", "").replace("</b>", "").replace("<i>", "").replace("</i>", "")
-                await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=plain_message, disable_web_page_preview=True)
+                print(f"Gagal mengirim pesan untuk {s['ticker']}: {e}")
             
             await asyncio.sleep(1)
             
