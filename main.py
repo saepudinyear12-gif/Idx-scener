@@ -8,18 +8,18 @@ from telegram import Bot
 TELEGRAM_BOT_TOKEN = "8694938627:AAHFF-uRBgSZIWFHK941fMMKglZIeZtAeVw"
 TELEGRAM_CHAT_ID = "1768576462"
 
-# Watchlist Komprehensif Sektor Non-Bluechip Teraktif & High Volatility
+# Watchlist Komprehensif Sektor (Emiten Error/Delisted Telah Dibersihkan)
 WATCHLIST = [
     # --- 1. PROPERTI & REAL ESTATE ---
     "PANI.JK", "BSDE.JK", "CTRA.JK", "PWON.JK", "SMRA.JK", "ASRI.JK", "LPKR.JK", 
     "DILD.JK", "BEST.JK", "DUTI.JK", "BKSL.JK", "KIJA.JK", "MMLP.JK", "GWSA.JK",
 
     # --- 2. KESEHATAN (Health) ---
-    "SILO.JK", "HEAL.JK", "MIKA.JK", "KAEF.JK", "INAF.JK", "DVLA.JK", "PEHA.JK", "RSGK.JK", "PRIME.JK",
+    "SILO.JK", "HEAL.JK", "MIKA.JK", "KAEF.JK", "INAF.JK", "DVLA.JK", "PEHA.JK", "RSGK.JK",
     
     # --- 3. TEKNOLOGI, DIGITAL & KABEL ---
-    "GOTO.JK", "BUKA.JK", "EMTK.JK", "MTDL.JK", "BELI.JK", "TECH.JK", "SCMA.JK", 
-    "FREN.JK", "EXCL.JK", "ISAT.JK", "WIFI.JK", "AXIO.JK",
+    "GOTO.JK", "BUKA.JK", "EMTK.JK", "MTDL.JK", "BELI.JK", "SCMA.JK", 
+    "EXCL.JK", "ISAT.JK", "WIFI.JK", "AXIO.JK",
     
     # --- 4. BAHAN BAKU / BASIC MATERIALS ---
     "BRPT.JK", "TPIA.JK", "TKIM.JK", "INKP.JK", "IMPC.JK", "ESSA.JK", "NCKL.JK", 
@@ -144,7 +144,7 @@ def check_stock_signal(ticker_symbol):
         # Area Risiko Breakdown
         risk_area = int(round(support * 0.94, 0))
 
-        # Rasio Lonjakan Volume vs Rata-rata 20 Hari (Katalis Bandarmologi)
+        # Rasio Lonjakan Volume vs Rata-rata 20 Hari
         vol_ratio = volume_shares / vol_ma20 if vol_ma20 > 0 else 1.0
 
         # Kriteria Sinyal: Strong Bullish / Momentum Breakout (Max Harga Rp 3.000)
