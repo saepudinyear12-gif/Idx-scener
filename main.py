@@ -1,5 +1,6 @@
 import os
 import asyncio
+import html
 import pandas as pd
 import yfinance as yf
 from telegram import Bot
@@ -8,7 +9,7 @@ from telegram import Bot
 TELEGRAM_BOT_TOKEN = "8694938627:AAHFF-uRBgSZIWFHK941fMMKglZIeZtAeVw"
 TELEGRAM_CHAT_ID = "1768576462"
 
-# Watchlist Komprehensif Sektor (Emiten Error/Delisted Telah Dibersihkan)
+# Watchlist Komprehensif Sektor
 WATCHLIST = [
     # --- 1. PROPERTI & REAL ESTATE ---
     "PANI.JK", "BSDE.JK", "CTRA.JK", "PWON.JK", "SMRA.JK", "ASRI.JK", "LPKR.JK", 
@@ -87,6 +88,8 @@ def check_stock_signal(ticker_symbol):
 
         info = tk.info
         company_name = info.get('longName', ticker_symbol.replace('.JK', ''))
+        # Bersihkan nama perusahaan dari karakter HTML khusus agar aman
+        company_name = html.escape(str(company_name))
 
         df['EMA20'] = df['Close'].ewm(span=20, adjust=False).mean()
         df['Vol_MA20'] = df['Volume'].rolling(window=20).mean()
@@ -134,30 +137,23 @@ def check_stock_signal(ticker_symbol):
         entry_low = int(close_price)
         entry_high = int(max(close_price, round(close_price * 1.02, 0)))
         
-        # Stop Loss (-3% s.d -4% atau di bawah Support)
         stop_loss = int(min(round(close_price * 0.965, 0), support if support < close_price else close_price * 0.965))
-        
-        # Take Profit 1 & 2
         tp1 = int(round(close_price * 1.05, 0))
         tp2 = int(round(close_price * 1.10, 0))
-
-        # Area Risiko Breakdown
         risk_area = int(round(support * 0.94, 0))
 
-        # Rasio Lonjakan Volume vs Rata-rata 20 Hari
         vol_ratio = volume_shares / vol_ma20 if vol_ma20 > 0 else 1.0
 
-        # Kriteria Sinyal: Strong Bullish / Momentum Breakout (Max Harga Rp 3.000)
+        # Kriteria Sinyal
         cond_vol = volume_shares > (vol_ma20 * 1.5)
         cond_change = price_change_pct >= 3.0
         cond_rsi = float(latest['RSI14']) > 55 and float(latest['RSI14']) > float(prev['RSI14'])
         cond_macd = float(latest['MACD_Hist']) > 0
-        cond_val = value >= 1_000_000_000  # Min Transaksi Rp 1 Miliar
-        cond_price = close_price <= 3000   # Maksimal Harga Saham Rp 3.000
+        cond_val = value >= 1_000_000_000
+        cond_price = close_price <= 3000
 
         if cond_vol and cond_change and cond_rsi and cond_macd and cond_val and cond_price:
             ticker_clean = ticker_symbol.replace(".JK", "")
-            news_link = f"https://www.google.com/search?q={ticker_clean}+stock+news+idx"
             
             return {
                 "ticker": ticker_clean,
@@ -179,8 +175,7 @@ def check_stock_signal(ticker_symbol):
                 "stop_loss": stop_loss,
                 "tp1": tp1,
                 "tp2": tp2,
-                "risk_area": risk_area,
-                "news_link": news_link
+                "risk_area": risk_area
             }
 
     except Exception as e:
@@ -227,7 +222,13 @@ async def run_screener():
                 f"└── 🔥 <b>Strong Bullish (High Momentum Buy)</b>\n\n"
                 f"<i>Disclaimer: Live market data & psikologi tren. DYOR!</i>"
             )
-            await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message, parse_mode="HTML", disable_web_page_preview=True)
+            try:
+                await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message, parse_mode="HTML", disable_web_page_preview=True)
+            except Exception as e:
+                # Jika masih gagal format HTML, kirim sebagai teks biasa agar bot tidak crash
+                plain_message = message.replace("<b>", "").replace("</b>", "").replace("<i>", "").replace("</i>", "")
+                await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=plain_message, disable_web_page_preview=True)
+            
             await asyncio.sleep(1)
             
         print("Alert VVIP berhasil dikirim ke Telegram!")
