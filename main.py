@@ -10,7 +10,6 @@ TELEGRAM_BOT_TOKEN = "8694938627:AAHFF-uRBgSZIWFHK941fMMKglZIeZtAeVw"
 TELEGRAM_CHAT_ID = "1768576462"
 
 # Watchlist Komprehensif Sektor Non-Bluechip Teraktif & High Volatility 
-# (PRIME, TECH, & FREN sudah dibersihkan)
 WATCHLIST = [
     # --- 1. PROPERTI & REAL ESTATE ---
     "PANI.JK", "BSDE.JK", "CTRA.JK", "PWON.JK", "SMRA.JK", "ASRI.JK", "LPKR.JK", 
@@ -121,44 +120,37 @@ def check_stock_signal(ticker_symbol):
         price_change_pct = (price_change / prev_close) * 100
 
         # Data Fundamental & Valuasi
-        market_cap = info.get('marketCap', 0) / 1e12  # Dalam Triliun (T)
+        market_cap = info.get('marketCap', 0) / 1e12  
         pe = info.get('trailingPE', 'N/A')
         pbv = info.get('priceToBook', 'N/A')
         roe = info.get('returnOnEquity')
         roe_str = f"{roe*100:.2f}%" if roe else "N/A"
         der = info.get('debtToEquity', 'N/A')
 
-        # Pemetaan SnD & Support Bawah
-        support_zone = round(df['Low'].tail(5).min(), 0)
-        support_bawah = round(df['Low'].tail(20).min(), 0)
-        resistance_zone = round(df['High'].tail(20).max(), 0)
-
-        # Kalkulasi Trading Plan Berbasis SnD
+        # Kalkulasi Trading Plan Berbasis Persentase
         entry_low = int(close_price)
         entry_high = int(max(close_price, round(close_price * 1.02, 0)))
-        stop_loss = int(round(support_zone * 0.98, 0))
-        
-        tp1 = int(resistance_zone) if resistance_zone > entry_high else int(round(close_price * 1.05, 0))
-        tp2 = int(round(tp1 * 1.05, 0)) if tp1 > entry_high else int(round(close_price * 1.10, 0))
+        stop_loss = int(round(close_price * 0.97, 0)) # SL 3% di bawah harga penutupan
+        tp1 = int(round(close_price * 1.05, 0))        # TP1 5% di atas harga penutupan
+        tp2 = int(round(close_price * 1.10, 0))        # TP2 10% di atas harga penutupan
 
-        # Rasio Lonjakan Volume vs Rata-rata 20 Hari
         vol_ratio = volume_shares / vol_ma20 if vol_ma20 > 0 else 1.0
 
-        # --- KRITERIA UTAMA (DILONGGARKAN AGAR LEBIH SENSITIF) ---
-        cond_vol = volume_shares > (vol_ma20 * 1.2)        # Volume > 1.2x MA20 (sebelumnya 1.5x)
-        cond_change = price_change_pct >= 2.0              # Kenaikan >= 2.0% (sebelumnya 3.0%)
-        cond_rsi = float(latest['RSI14']) > 50 and float(latest['RSI14']) > float(prev['RSI14']) # RSI > 50 & naik
-        cond_macd = float(latest['MACD_Hist']) > 0         # MACD Histogram positif
-        cond_val = value >= 500_000_000                    # Min Transaksi Rp 500 Juta (sebelumnya 1 Miliar)
-        cond_price = close_price <= 3000                   # Maksimal Harga Saham Rp 3.000
+        # Kriteria Sinyal Momentum
+        cond_vol = volume_shares > (vol_ma20 * 1.2)        
+        cond_change = price_change_pct >= 2.0              
+        cond_rsi = float(latest['RSI14']) > 50 and float(latest['RSI14']) > float(prev['RSI14']) 
+        cond_macd = float(latest['MACD_Hist']) > 0         
+        cond_val = value >= 500_000_000                    
+        cond_price = close_price <= 3000                   
 
-        # --- TAMBAHAN DETEKSI POTENSI ARA (SUPER MOMENTUM) ---
-        is_potential_ara = (volume_shares > (vol_ma20 * 3.0)) and (price_change_pct >= 10.0)
+        # Kondisi Volume di atas 3x MA20 untuk Label Momentum ARA
+        is_momentum_ara = volume_shares > (vol_ma20 * 3.0)
 
         if cond_vol and cond_change and cond_rsi and cond_macd and cond_val and cond_price:
             ticker_clean = ticker_symbol.replace(".JK", "")
             
-            rating_text = "🚀 🔥 POTENSI ARA / SUPER MOMENTUM" if is_potential_ara else "🔥 SnD Momentum Breakout"
+            rating_text = "🚀 🔥 MOMENTUM ARA" if is_momentum_ara else "🔥 Momentum Breakout"
             
             return {
                 "ticker": ticker_clean,
@@ -173,9 +165,6 @@ def check_stock_signal(ticker_symbol):
                 "pbv": f"{pbv:.2f}" if isinstance(pbv, (int, float)) else pbv,
                 "roe": roe_str,
                 "der": f"{der:.2f}" if isinstance(der, (int, float)) else der,
-                "support": support_zone,
-                "support_bawah": support_bawah if support_bawah < support_zone else int(support_zone * 0.95),
-                "resist": resistance_zone,
                 "entry_low": entry_low,
                 "entry_high": entry_high,
                 "stop_loss": stop_loss,
@@ -192,7 +181,7 @@ async def run_screener():
     bot = Bot(token=TELEGRAM_BOT_TOKEN)
     signals = []
 
-    print("Memindai emiten SnD & Historical Transaction...")
+    print("Memindai emiten Momentum & Historical Transaction...")
     for ticker in WATCHLIST:
         res = check_stock_signal(ticker)
         if res:
@@ -201,31 +190,23 @@ async def run_screener():
 
     if signals:
         for s in signals:
-            # Mengamankan nama perusahaan dari karakter khusus HTML (seperti '&')
-            safe_company_name = html.escape(s['company_name'])
-            
             message = (
-                f"🏢 <b>Emiten:</b> {safe_company_name} (${s['ticker']})\n\n"
-                f"📈 <b>1. SNAPSHOT HARGA & SnD</b>\n"
+                f"({s['ticker']})\n\n"
+                f"📈 <b>1. SNAPSHOT HARGA</b>\n"
                 f"├── Harga Live: Rp {s['price']:,.0f}\n"
                 f"├── Perubahan: {s['change']:+,.0f} ({s['change_pct']:+.2f}%)\n"
-                f"├── Volume: {s['volume_lots']:,} lot ({s['vol_ratio']:.1f}x MA20)\n"
-                f"├── Demand Zone: Rp {s['support']:,.0f}\n"
-                f"└── Supply Zone: Rp {s['resist']:,.0f}\n\n"
+                f"└── Volume: {s['volume_lots']:,} lot ({s['vol_ratio']:.1f}x MA20)\n\n"
                 f"💎 <b>2. VALUASI & FUNDAMENTAL</b>\n"
                 f"├── P/E: {s['pe']} | P/BV: {s['pbv']}x\n"
                 f"└── ROE: {s['roe']} | DER: {s['der']}x\n\n"
                 f"🐳 <b>3. BANDARMOLOGY & HISTORICAL TRANSACTION</b>\n"
                 f"🟢 <b>Akumulasi Jejak Whale:</b> Lonjakan volume {s['vol_ratio']:.1f}x dari rata-rata menunjukkan kesiapan <i>markup phase</i>.\n\n"
-                f"🧠 <b>4. ANALISIS SKENARIO SnD (IF-THEN)</b>\n"
-                f"• Jika berhasil menembus resistance <b>Rp {s['resist']:,.0f}</b> dengan volume besar, silakan HAKA, peluang terbuka lebar.\n"
-                f"• Jika terjadi <i>false breakout</i> atau gagal, potensi koreksi turun menuju support lanjutan di <b>Rp {s['support_bawah']:,.0f}</b>.\n\n"
-                f"🎯 <b>5. TRADING PLAN</b>\n"
+                f"🎯 <b>4. TRADING PLAN</b>\n"
                 f"• <b>Entry:</b> {s['entry_low']:,.0f} – {s['entry_high']:,.0f}\n"
-                f"• <b>Stop Loss (SL):</b> {s['stop_loss']:,.0f} (jebol area support)\n"
+                f"• <b>Stop Loss (SL):</b> {s['stop_loss']:,.0f}\n"
                 f"• <b>Take Profit 1:</b> {s['tp1']:,.0f}\n"
                 f"• <b>Take Profit 2:</b> {s['tp2']:,.0f}\n\n"
-                f"⭐ <b>6. RATING</b>\n"
+                f"⭐ <b>5. RATING</b>\n"
                 f"└── {s['rating_text']}\n\n"
                 f"<i>Disclaimer: Live market data & psikologi tren. DYOR!</i>"
             )
@@ -235,9 +216,9 @@ async def run_screener():
                 print(f"Gagal mengirim pesan Telegram untuk {s['ticker']}: {err}")
             await asyncio.sleep(1)
             
-        print("Alert SnD Berhasil dikirim ke Telegram!")
+        print("Alert Momentum Berhasil dikirim ke Telegram!")
     else:
-        print("Belum ada emiten yang memenuhi skenario SnD hari ini.")
+        print("Belum ada emiten yang memenuhi kriteria momentum hari ini.")
 
 if __name__ == "__main__":
     asyncio.run(run_screener())
