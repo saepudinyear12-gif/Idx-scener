@@ -1,22 +1,12 @@
 import os
 import asyncio
-import logging
-from datetime import datetime
-import pytz
 import pandas as pd
 import yfinance as yf
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram import Bot
 
-# --- KONFIGURASI BOT ---
-TELEGRAM_BOT_TOKEN = "8805497572:AAH9XxKICtNGdiF5J19o61tZ27ht_BYFjeE"
+# Token & Chat ID Telegram Anda
+TELEGRAM_BOT_TOKEN = "8694938627:AAHFF-uRBgSZIWFHK941fMMKglZIeZtAeVw"
 TELEGRAM_CHAT_ID = "1768576462"
-
-# Konfigurasi logging agar proses bot terlihat di terminal
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
-)
-logger = logging.getLogger(__name__)
 
 # Watchlist Komprehensif Sektor
 WATCHLIST = [
@@ -88,30 +78,12 @@ WATCHLIST = [
     "TRUE.JK", "HILL.JK", "NSSS.JK", "MOLI.JK", "JGLE.JK", "MPRO.JK", "AMMN.JK", "SAGE.JK"
 ]
 
-# --- CEK JAM BURSA AKTIF (SENIN - JUMAT, 09:00 - 16:00 WIB) ---
-def is_market_open():
-    tz = pytz.timezone('Asia/Jakarta')
-    now = datetime.now(tz)
-    
-    # Hari Sabtu (5) atau Minggu (6)
-    if now.weekday() > 4:
-        return False
-        
-    market_start = now.replace(hour=9, minute=0, second=0, microsecond=0)
-    market_end = now.replace(hour=16, minute=0, second=0, microsecond=0)
-    
-    return market_start <= now <= market_end
-
-# --- FUNGSI ANALISIS SAHAM ---
-def analyze_stock(ticker_symbol):
+def check_stock_signal(ticker_symbol):
     try:
-        if not ticker_symbol.endswith(".JK"):
-            ticker_symbol += ".JK"
-            
         tk = yf.Ticker(ticker_symbol)
         df = tk.history(period="60d", interval="1d")
         if len(df) < 30:
-            return None, False
+            return None
 
         info = tk.info
         company_name = info.get('longName', ticker_symbol.replace('.JK', ''))
@@ -145,25 +117,28 @@ def analyze_stock(ticker_symbol):
         price_change = close_price - prev_close
         price_change_pct = (price_change / prev_close) * 100
 
+        # Fundamental & Valuasi
         pe = info.get('trailingPE', 'N/A')
         pbv = info.get('priceToBook', 'N/A')
         roe = info.get('returnOnEquity')
         roe_str = f"{roe*100:.2f}%" if roe else "N/A"
         der = info.get('debtToEquity', 'N/A')
 
+        # Support & Resistance / Demand & Supply Otomatis (20 Hari)
         support_zone = round(df['Low'].tail(20).min(), 0)
         supply_zone = round(df['High'].tail(20).max(), 0)
 
+        # Trading Plan Kalkulasi
         entry_low = int(close_price)
         entry_high = int(round(close_price * 1.02, 0))
-        stop_loss = int(round(support_zone * 0.99, 0))
+        stop_loss = int(round(support_zone * 0.99, 0)) # jebol area support
         tp1 = int(round(close_price * 1.05, 0))
         tp2 = int(round(close_price * 1.10, 0))
         fallback_support = int(round(support_zone * 0.95, 0))
 
         vol_ratio = volume_shares / vol_ma20 if vol_ma20 > 0 else 1.0
-        ticker_clean = ticker_symbol.replace(".JK", "")
 
+        # Kriteria Sinyal Sesuai (Vol lonjakan, Harga Naik >3%, Max Rp 3.000)
         cond_vol = volume_shares > (vol_ma20 * 1.5)
         cond_change = price_change_pct >= 3.0
         cond_rsi = float(latest['RSI14']) > 55
@@ -171,97 +146,83 @@ def analyze_stock(ticker_symbol):
         cond_val = value >= 1_000_000_000
         cond_price = close_price <= 3000
 
-        is_passed = (cond_vol and cond_change and cond_rsi and cond_macd and cond_val and cond_price)
+        if cond_vol and cond_change and cond_rsi and cond_macd and cond_val and cond_price:
+            ticker_clean = ticker_symbol.replace(".JK", "")
+            
+            return {
+                "ticker": ticker_clean,
+                "company_name": company_name,
+                "price": close_price,
+                "change": price_change,
+                "change_pct": price_change_pct,
+                "volume_lots": volume_lots,
+                "vol_ratio": vol_ratio,
+                "pe": f"{pe:,.2f}x" if isinstance(pe, (int, float)) else pe,
+                "pbv": f"{pbv:,.2f}x" if isinstance(pbv, (int, float)) else pbv,
+                "roe": roe_str,
+                "der": f"{der:,.2f}x" if isinstance(der, (int, float)) else der,
+                "demand_zone": support_zone,
+                "supply_zone": supply_zone,
+                "fallback_support": fallback_support,
+                "entry_low": entry_low,
+                "entry_high": entry_high,
+                "stop_loss": stop_loss,
+                "tp1": tp1,
+                "tp2": tp2,
+            }
 
-        message = (
-            f"(${ticker_clean}) - {company_name}\n\n"
-            f"📈 1. SNAPSHOT HARGA & SnD\n"
-            f"— Harga Live: Rp {close_price:,.0f}\n"
-            f"— Perubahan: {price_change:+,.0f} ({price_change_pct:+.2f}%)\n"
-            f"— Volume: {volume_lots:,} lot ({vol_ratio:.1f}x MA20)\n"
-            f"— Demand Zone: Rp {support_zone:,.0f}\n"
-            f"— Supply Zone: Rp {supply_zone:,.0f}\n\n"
-            f"💎 2. VALUASI & FUNDAMENTAL\n"
-            f"— P/E: {pe if pe=='N/A' else f'{pe:,.2f}x'} | P/BV: {pbv if pbv=='N/A' else f'{pbv:,.2f}x'}\n"
-            f"— ROE: {roe_str} | DER: {der if der=='N/A' else f'{der:,.2f}x'}\n\n"
-            f"🐋 3. BANDARMOLOGY & HISTORICAL TRANSACTION\n"
-            f"🟢 Akumulasi Jejak Whale: Lonjakan volume {vol_ratio:.1f}x dari rata-rata menunjukkan kesiapan markup phase.\n\n"
-            f"🧠 4. ANALISIS SKENARIO SnD (IF-THEN)\n"
-            f"• Jika berhasil menembus resistance Rp {supply_zone:,.0f} dengan volume besar, silakan HAKA, peluang terbuka lebar.\n"
-            f"• Jika terjadi false breakout atau gagal, potensi koreksi turun menuju support lanjutan di Rp {fallback_support:,.0f}.\n\n"
-            f"🎯 5. TRADING PLAN\n"
-            f"• Entry: {entry_low:,.0f} – {entry_high:,.0f}\n"
-            f"• Stop Loss (SL): {stop_loss:,.0f} (jebol area support)\n"
-            f"• Take Profit 1: {tp1:,.0f}\n"
-            f"• Take Profit 2: {tp2:,.0f}\n\n"
-            f"⭐ 6. RATING\n"
-            f"🚀🔥 POTENSI ARA / SUPER MOMENTUM"
-        )
-        return message, is_passed
     except Exception as e:
-        return f"Gagal memuat data untuk emiten tersebut. Error: {e}", False
+        pass
+    return None
 
-# --- TELEGRAM HANDLERS ---
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "🤖 **Bot Cuan Saya (Jam Bursa Aktif Only)**\n\n"
-        "• Ketik `/cek KODE_SAHAM` (contoh: `/cek TOBA`) untuk cek manual.\n"
-        "• Ketik `/scan` untuk memindai watchlist otomatis."
-    )
+async def run_screener():
+    bot = Bot(token=TELEGRAM_BOT_TOKEN)
+    signals = []
 
-async def cek_saham(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Validasi jam bursa
-    if not is_market_open():
-        await update.message.reply_text(
-            "⏳ Mohon maaf, fitur cek manual hanya dapat digunakan pada jam bursa aktif "
-            "(Senin - Jumat, pukul 09:00 - 16:00 WIB)."
-        )
-        return
-        
-    if not context.args:
-        await update.message.reply_text("Mohon masukkan kode sahamnya. Contoh: `/cek TOBA`")
-        return
-    
-    ticker = context.args[0].upper()
-    await update.message.reply_text(f"Sedang memindai data untuk ${ticker}...")
-    
-    result_message, _ = analyze_stock(ticker)
-    await update.message.reply_text(result_message, disable_web_page_preview=True)
-
-async def run_manual_screener(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_market_open():
-        await update.message.reply_text(
-            "⏳ Mohon maaf, fitur scan otomatis hanya dapat digunakan pada jam bursa aktif "
-            "(Senin - Jumat, pukul 09:00 - 16:00 WIB)."
-        )
-        return
-
-    await update.message.reply_text("🔍 Memindai emiten Strong Bullish VVIP (Max Rp 3.000)...")
-    signals_count = 0
-
+    print("Memindai emiten Strong Bullish VVIP (Max Rp 3.000)...")
     for ticker in WATCHLIST:
-        msg, is_passed = analyze_stock(ticker)
-        if is_passed:
-            await update.message.reply_text(msg, disable_web_page_preview=True)
-            signals_count += 1
+        res = check_stock_signal(ticker)
+        if res:
+            signals.append(res)
+        await asyncio.sleep(0.3)
+
+    if signals:
+        for s in signals:
+            message = (
+                f"(${s['ticker']})\n\n"
+                f"📈 1. SNAPSHOT HARGA & SnD\n"
+                f"— Harga Live: Rp {s['price']:,.0f}\n"
+                f"— Perubahan: {s['change']:+,.0f} ({s['change_pct']:+.2f}%)\n"
+                f"— Volume: {s['volume_lots']:,} lot ({s['vol_ratio']:.1f}x MA20)\n"
+                f"— Demand Zone: Rp {s['demand_zone']:,.0f}\n"
+                f"— Supply Zone: Rp {s['supply_zone']:,.0f}\n\n"
+                f"💎 2. VALUASI & FUNDAMENTAL\n"
+                f"— P/E: {s['pe']} | P/BV: {s['pbv']}\n"
+                f"— ROE: {s['roe']} | DER: {s['der']}\n\n"
+                f"🐋 3. BANDARMOLOGY & HISTORICAL TRANSACTION\n"
+                f"🟢 Akumulasi Jejak Whale: Lonjakan volume {s['vol_ratio']:.1f}x dari rata-rata menunjukkan kesiapan markup phase.\n\n"
+                f"🧠 4. ANALISIS SKENARIO SnD (IF-THEN)\n"
+                f"• Jika berhasil menembus resistance Rp {s['supply_zone']:,.0f} dengan volume besar, silakan HAKA, peluang terbuka lebar.\n"
+                f"• Jika terjadi false breakout atau gagal, potensi koreksi turun menuju support lanjutan di Rp {s['fallback_support']:,.0f}.\n\n"
+                f"🎯 5. TRADING PLAN\n"
+                f"• Entry: {s['entry_low']:,.0f} – {s['entry_high']:,.0f}\n"
+                f"• Stop Loss (SL): {s['stop_loss']:,.0f} (jebol area support)\n"
+                f"• Take Profit 1: {s['tp1']:,.0f}\n"
+                f"• Take Profit 2: {s['tp2']:,.0f}\n\n"
+                f"⭐ 6. RATING\n"
+                f"🚀🔥 POTENSI ARA / SUPER MOMENTUM"
+            )
+            
+            try:
+                await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message, disable_web_page_preview=True)
+            except Exception as e:
+                print(f"Gagal mengirim pesan untuk {s['ticker']}: {e}")
+            
             await asyncio.sleep(1)
-        await asyncio.sleep(0.2)
-
-    if signals_count == 0:
-        await update.message.reply_text("Belum ada emiten Strong Bullish yang memenuhi kriteria saat ini.")
+            
+        print("Alert VVIP gaya bot 'CUAN SAYA' berhasil dikirim ke Telegram!")
     else:
-        await update.message.reply_text(f"Selesai! Total {signals_count} emiten ditemukan.")
-
-# --- MAIN PROGRAM ---
-def main():
-    application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
-
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("cek", cek_saham))
-    application.add_handler(CommandHandler("scan", run_manual_screener))
-
-    print("Bot Telegram dengan filter jam bursa siap berjalan...")
-    application.run_polling()
+        print("Belum ada emiten Strong Bullish yang memenuhi kriteria hari ini.")
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(run_screener())
