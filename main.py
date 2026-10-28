@@ -1,14 +1,16 @@
 import os
 import asyncio
 import logging
+from datetime import datetime
+import pytz
 import pandas as pd
 import yfinance as yf
-from telegram import Update, Bot
+from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 # --- KONFIGURASI BOT ---
 TELEGRAM_BOT_TOKEN = "8805497572:AAH9XxKICtNGdiF5J19o61tZ27ht_BYFjeE"
-TELEGRAM_CHAT_ID = "1768576462"  # Chat ID default untuk kirim hasil screener otomatis
+TELEGRAM_CHAT_ID = "1768576462"
 
 # Konfigurasi logging agar proses bot terlihat di terminal
 logging.basicConfig(
@@ -86,7 +88,21 @@ WATCHLIST = [
     "TRUE.JK", "HILL.JK", "NSSS.JK", "MOLI.JK", "JGLE.JK", "MPRO.JK", "AMMN.JK", "SAGE.JK"
 ]
 
-# --- FUNGSI ANALISIS UTAMA (GAYA CUAN SAYA) ---
+# --- CEK JAM BURSA AKTIF (SENIN - JUMAT, 09:00 - 16:00 WIB) ---
+def is_market_open():
+    tz = pytz.timezone('Asia/Jakarta')
+    now = datetime.now(tz)
+    
+    # Hari Sabtu (5) atau Minggu (6)
+    if now.weekday() > 4:
+        return False
+        
+    market_start = now.replace(hour=9, minute=0, second=0, microsecond=0)
+    market_end = now.replace(hour=16, minute=0, second=0, microsecond=0)
+    
+    return market_start <= now <= market_end
+
+# --- FUNGSI ANALISIS SAHAM ---
 def analyze_stock(ticker_symbol):
     try:
         if not ticker_symbol.endswith(".JK"):
@@ -95,7 +111,7 @@ def analyze_stock(ticker_symbol):
         tk = yf.Ticker(ticker_symbol)
         df = tk.history(period="60d", interval="1d")
         if len(df) < 30:
-            return None
+            return None, False
 
         info = tk.info
         company_name = info.get('longName', ticker_symbol.replace('.JK', ''))
@@ -129,18 +145,15 @@ def analyze_stock(ticker_symbol):
         price_change = close_price - prev_close
         price_change_pct = (price_change / prev_close) * 100
 
-        # Fundamental & Valuasi
         pe = info.get('trailingPE', 'N/A')
         pbv = info.get('priceToBook', 'N/A')
         roe = info.get('returnOnEquity')
         roe_str = f"{roe*100:.2f}%" if roe else "N/A"
         der = info.get('debtToEquity', 'N/A')
 
-        # Support & Resistance / Demand & Supply Otomatis (20 Hari)
         support_zone = round(df['Low'].tail(20).min(), 0)
         supply_zone = round(df['High'].tail(20).max(), 0)
 
-        # Trading Plan Kalkulasi
         entry_low = int(close_price)
         entry_high = int(round(close_price * 1.02, 0))
         stop_loss = int(round(support_zone * 0.99, 0))
@@ -151,7 +164,6 @@ def analyze_stock(ticker_symbol):
         vol_ratio = volume_shares / vol_ma20 if vol_ma20 > 0 else 1.0
         ticker_clean = ticker_symbol.replace(".JK", "")
 
-        # Cek kondisi untuk screener otomatis
         cond_vol = volume_shares > (vol_ma20 * 1.5)
         cond_change = price_change_pct >= 3.0
         cond_rsi = float(latest['RSI14']) > 55
@@ -189,15 +201,23 @@ def analyze_stock(ticker_symbol):
     except Exception as e:
         return f"Gagal memuat data untuk emiten tersebut. Error: {e}", False
 
-# --- FITUR TELEGRAM BOT: HANDLERS ---
+# --- TELEGRAM HANDLERS ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "🤖 **Bot Cuan Saya Aktif!**\n\n"
-        "• Ketik `/cek KODE_SAHAM` (contoh: `/cek TOBA` atau `/cek BBCA`) untuk analisis manual instan.\n"
-        "• Atau jalankan perintah `/scan` untuk memindai seluruh watchlist secara otomatis."
+        "🤖 **Bot Cuan Saya (Jam Bursa Aktif Only)**\n\n"
+        "• Ketik `/cek KODE_SAHAM` (contoh: `/cek TOBA`) untuk cek manual.\n"
+        "• Ketik `/scan` untuk memindai watchlist otomatis."
     )
 
 async def cek_saham(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Validasi jam bursa
+    if not is_market_open():
+        await update.message.reply_text(
+            "⏳ Mohon maaf, fitur cek manual hanya dapat digunakan pada jam bursa aktif "
+            "(Senin - Jumat, pukul 09:00 - 16:00 WIB)."
+        )
+        return
+        
     if not context.args:
         await update.message.reply_text("Mohon masukkan kode sahamnya. Contoh: `/cek TOBA`")
         return
@@ -209,7 +229,14 @@ async def cek_saham(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(result_message, disable_web_page_preview=True)
 
 async def run_manual_screener(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🔍 Memindai emiten Strong Bullish VVIP (Max Rp 3.000) dari watchlist...")
+    if not is_market_open():
+        await update.message.reply_text(
+            "⏳ Mohon maaf, fitur scan otomatis hanya dapat digunakan pada jam bursa aktif "
+            "(Senin - Jumat, pukul 09:00 - 16:00 WIB)."
+        )
+        return
+
+    await update.message.reply_text("🔍 Memindai emiten Strong Bullish VVIP (Max Rp 3.000)...")
     signals_count = 0
 
     for ticker in WATCHLIST:
@@ -229,12 +256,11 @@ async def run_manual_screener(update: Update, context: ContextTypes.DEFAULT_TYPE
 def main():
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
 
-    # Daftarkan command handlers untuk Telegram Interaktif
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("cek", cek_saham))
     application.add_handler(CommandHandler("scan", run_manual_screener))
 
-    print("Bot Telegram Gabungan (Manual & Screener) siap berjalan...")
+    print("Bot Telegram dengan filter jam bursa siap berjalan...")
     application.run_polling()
 
 if __name__ == "__main__":
