@@ -9,11 +9,11 @@ from google import genai
 # ==========================================
 # KONFIGURASI API & TELEGRAM
 # ==========================================
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "ISI_TOKEN_BOT_TELEGRAM_ANDA")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "ISI_CHAT_ID_ANDA")
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "ISI_API_KEY_GEMINI_ANDA")
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
-# 13 SEKTOR UTAMA BEI + LENGKAP LAPIS 2 & 3
+# 13 SEKTOR UTAMA BEI + LAPIS 2 & 3
 SECTORS_IDX = {
     "1. Energi": [
         "BUMI.JK", "DEWA.JK", "ENRG.JK", "ELSA.JK", "MEDC.JK", "DOID.JK", "INDY.JK", 
@@ -75,7 +75,6 @@ def hitung_cmf(df, period=20):
 def jalankan_screener_batch():
     print(f"Mengunduh data batch untuk {len(UNIVERSE_IDX)} emiten...")
     data = yf.download(UNIVERSE_IDX, period="2mo", interval="1d", group_by="ticker", progress=False)
-    
     kandidat_bagus = []
     
     for ticker in UNIVERSE_IDX:
@@ -125,25 +124,18 @@ def jalankan_screener_batch():
     return kandidat_bagus[:4]
 
 def buat_narasi_ai(saham_list):
-    if not GEMINI_API_KEY or "ISI_API_KEY" in GEMINI_API_KEY:
-        teks = "🤖 *AI 13-Sector Market Insight:*\n"
-        for s in saham_list:
-            teks += f"• *{s['ticker']}* (+{s['pct']}%): Lonjakan volume {s['vol_spike']}x, akumulasi terdeteksi menuju target {s['target_1']}.\n"
-        return teks
-        
+    if not GEMINI_API_KEY:
+        return "🤖 *AI Market Insight:* Momentum breakout terdeteksi."
     try:
         client = genai.Client(api_key=GEMINI_API_KEY)
-        prompt = f"Buatkan ringkasan analisa scalping/swing singkat untuk saham berikut: {saham_list}"
+        prompt = f"Buatkan ringkasan analisa scalping singkat untuk saham berikut: {saham_list}"
         response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
-        return f"🤖 *AI 13-Sector Market Insight:*\n{response.text}"
+        return f"🤖 *AI Market Insight:*\n{response.text}"
     except Exception:
-        return "🤖 *AI Insight:* Momentum breakout terpantau di berbagai sektor."
+        return "🤖 *AI Insight:* Sektor terpantau aktif."
 
 def generate_card_image(saham_list, output_path="screener_result.png"):
-    width = 720
-    header_h = 110
-    card_h = 260
-    padding = 28
+    width, header_h, card_h, padding = 720, 110, 260, 28
     total_h = header_h + (len(saham_list) * (card_h + 24)) + 40
     
     img = Image.new("RGB", (width, total_h), "#f2fbf6")
@@ -160,7 +152,7 @@ def generate_card_image(saham_list, output_path="screener_result.png"):
 
     tgl = datetime.now().strftime("%d-%m-%Y")
     draw.text((padding, 28), "13-Sector AI Screener", fill="#10b981", font=font_title)
-    draw.text((padding, 68), f"Scan Tanggal {tgl} | Batch Optimized", fill="#6b7280", font=font_sub)
+    draw.text((padding, 68), f"Scan Tanggal {tgl} | Main Automated", fill="#6b7280", font=font_sub)
     
     y_cursor = header_h
     for s in saham_list:
@@ -209,11 +201,12 @@ def kirim_ke_telegram(image_path, caption):
         requests.post(url, data=payload, files=files)
 
 if __name__ == "__main__":
+    print("Memulai screener utama 13 sektor...")
     hasil = jalankan_screener_batch()
     if hasil:
         img_file = generate_card_image(hasil)
         narasi = buat_narasi_ai(hasil)
-        print("Screener selesai! Mengirim ke Telegram...")
+        print("Mengirim hasil ke Telegram...")
         kirim_ke_telegram(img_file, narasi)
     else:
         print("Tidak ada saham yang memenuhi kriteria hari ini.")
