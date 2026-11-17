@@ -2,8 +2,8 @@ name: Stock Screener Bot
 
 on:
   schedule:
-    # 1. Jam 09:02 WIB (02:02 UTC) - Scalping HAKA (Awal Open Market)
-    - cron: '2 2 * * 1-5'
+    # 1. Jam 09:00 WIB (02:00 UTC) - Sesi Pagi (HAKA / Scalping)
+    - cron: '0 2 * * 1-5'
     # 2. Jam 09:15 WIB (02:15 UTC) - Pre-ARA Early Momentum 🚀
     - cron: '15 2 * * 1-5'
     # 3. Jam 09:30 WIB (02:30 UTC) - Pre-ARA Second Wave
@@ -28,22 +28,17 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pandas yfinance requests python-telegram-bot
+          pip install pandas yfinance requests Pillow google-genai python-telegram-bot
 
       - name: Run Main Screener Script
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python main.py
 
       - name: Run Pre-ARA Screener Script
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python pre_ara.py
-
-      - name: Run Scalping Screener Script
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python scalping.py
