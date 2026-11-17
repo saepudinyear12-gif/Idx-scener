@@ -28,7 +28,7 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pandas yfinance requests pillow google-genai python-telegram-bot
+          pip install pandas yfinance requests Pillow google-genai python-telegram-bot
 
       - name: Run Main Screener Script
         env:
